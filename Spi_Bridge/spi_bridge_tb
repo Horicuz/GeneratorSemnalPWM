@@ -1,0 +1,1116 @@
+#! /opt/homebrew/Cellar/icarus-verilog/12.0/bin/vvp
+:ivl_version "12.0 (stable)";
+:ivl_delay_selection "TYPICAL";
+:vpi_time_precision - 12;
+:vpi_module "/opt/homebrew/Cellar/icarus-verilog/12.0/lib/ivl/system.vpi";
+:vpi_module "/opt/homebrew/Cellar/icarus-verilog/12.0/lib/ivl/vhdl_sys.vpi";
+:vpi_module "/opt/homebrew/Cellar/icarus-verilog/12.0/lib/ivl/vhdl_textio.vpi";
+:vpi_module "/opt/homebrew/Cellar/icarus-verilog/12.0/lib/ivl/v2005_math.vpi";
+:vpi_module "/opt/homebrew/Cellar/icarus-verilog/12.0/lib/ivl/va_math.vpi";
+S_0x10571c3a0 .scope module, "tb_spi_bridge_comprehensive" "tb_spi_bridge_comprehensive" 2 3;
+ .timescale -9 -12;
+v0x8d9039fe0_0 .net "byte_sync", 0 0, L_0x8d9016290;  1 drivers
+v0x8d903a080_0 .var "byte_sync_detected", 0 0;
+v0x8d903a120_0 .var "clk", 0 0;
+v0x8d903a1c0_0 .var "cs_n", 0 0;
+v0x8d903a260_0 .net "data_in", 7 0, L_0x8d9016300;  1 drivers
+v0x8d903a300_0 .var "data_in_captured", 7 0;
+v0x8d903a3a0_0 .var "data_out", 7 0;
+v0x8d903a440_0 .var/i "fail_count", 31 0;
+v0x8d903a4e0_0 .net "miso", 0 0, L_0x8d9016220;  1 drivers
+v0x8d903a580_0 .var "miso_captured_byte", 7 0;
+v0x8d903a620_0 .var "mosi", 0 0;
+v0x8d903a6c0_0 .var/i "pass_count", 31 0;
+v0x8d903a760_0 .var "rst_n", 0 0;
+v0x8d903a800_0 .var "sclk", 0 0;
+v0x8d903a8a0_0 .var/i "test_count", 31 0;
+S_0x10571c520 .scope task, "abort_transfer" "abort_transfer" 2 82, 2 82 0, S_0x10571c3a0;
+ .timescale -9 -12;
+v0x8d9038320_0 .var/i "abort_at_bit", 31 0;
+v0x8d90383c0_0 .var "byte_to_send", 7 0;
+v0x8d9038460_0 .var/i "i", 31 0;
+TD_tb_spi_bridge_comprehensive.abort_transfer ;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a1c0_0, 0, 1;
+    %delay 1000000, 0;
+    %pushi/vec4 7, 0, 32;
+    %store/vec4 v0x8d9038460_0, 0, 32;
+T_0.0 ;
+    %load/vec4 v0x8d9038460_0;
+    %cmpi/s 0, 0, 32;
+    %flag_inv 5; GE is !LT
+    %jmp/0xz T_0.1, 5;
+    %load/vec4 v0x8d90383c0_0;
+    %load/vec4 v0x8d9038460_0;
+    %part/s 1;
+    %store/vec4 v0x8d903a620_0, 0, 1;
+    %delay 1000000, 0;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d903a800_0, 0, 1;
+    %delay 1000000, 0;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a800_0, 0, 1;
+    %delay 1000000, 0;
+    %load/vec4 v0x8d9038460_0;
+    %load/vec4 v0x8d9038320_0;
+    %cmp/e;
+    %jmp/0xz  T_0.2, 4;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d903a1c0_0, 0, 1;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a620_0, 0, 1;
+    %delay 2000000, 0;
+    %pushi/vec4 4294967295, 0, 32;
+    %store/vec4 v0x8d9038460_0, 0, 32;
+T_0.2 ;
+    %load/vec4 v0x8d9038460_0;
+    %subi 1, 0, 32;
+    %store/vec4 v0x8d9038460_0, 0, 32;
+    %jmp T_0.0;
+T_0.1 ;
+    %end;
+S_0x1057254c0 .scope task, "check_result" "check_result" 2 121, 2 121 0, S_0x10571c3a0;
+ .timescale -9 -12;
+v0x8d9038500_0 .var "check_miso", 0 0;
+v0x8d90385a0_0 .var "check_mosi", 0 0;
+v0x8d9038640_0 .var "expected_miso", 7 0;
+v0x8d90386e0_0 .var "expected_mosi", 7 0;
+v0x8d9038780_0 .var "test_name", 255 0;
+TD_tb_spi_bridge_comprehensive.check_result ;
+    %load/vec4 v0x8d903a8a0_0;
+    %addi 1, 0, 32;
+    %store/vec4 v0x8d903a8a0_0, 0, 32;
+    %load/vec4 v0x8d90385a0_0;
+    %flag_set/vec4 8;
+    %jmp/0xz  T_1.4, 8;
+    %load/vec4 v0x8d903a300_0;
+    %load/vec4 v0x8d90386e0_0;
+    %cmp/e;
+    %flag_get/vec4 4;
+    %jmp/0 T_1.8, 4;
+    %load/vec4 v0x8d903a080_0;
+    %and;
+T_1.8;
+    %flag_set/vec4 8;
+    %jmp/0xz  T_1.6, 8;
+    %vpi_call 2 132 "$display", " [PASS] %0s: MOSI 0x%h", v0x8d9038780_0, v0x8d90386e0_0 {0 0 0};
+    %load/vec4 v0x8d903a6c0_0;
+    %addi 1, 0, 32;
+    %store/vec4 v0x8d903a6c0_0, 0, 32;
+    %jmp T_1.7;
+T_1.6 ;
+    %vpi_call 2 135 "$display", " [FAIL] %0s: MOSI expected 0x%h, got 0x%h (sync=%0d)", v0x8d9038780_0, v0x8d90386e0_0, v0x8d903a300_0, v0x8d903a080_0 {0 0 0};
+    %load/vec4 v0x8d903a440_0;
+    %addi 1, 0, 32;
+    %store/vec4 v0x8d903a440_0, 0, 32;
+T_1.7 ;
+T_1.4 ;
+    %load/vec4 v0x8d9038500_0;
+    %flag_set/vec4 8;
+    %jmp/0xz  T_1.9, 8;
+    %load/vec4 v0x8d903a580_0;
+    %load/vec4 v0x8d9038640_0;
+    %cmp/e;
+    %jmp/0xz  T_1.11, 4;
+    %vpi_call 2 148 "$display", " [PASS] %0s: MISO 0x%h", v0x8d9038780_0, v0x8d9038640_0 {0 0 0};
+    %load/vec4 v0x8d903a6c0_0;
+    %addi 1, 0, 32;
+    %store/vec4 v0x8d903a6c0_0, 0, 32;
+    %jmp T_1.12;
+T_1.11 ;
+    %vpi_call 2 151 "$display", " [FAIL] %0s: MISO expected 0x%h, got 0x%h", v0x8d9038780_0, v0x8d9038640_0, v0x8d903a580_0 {0 0 0};
+    %load/vec4 v0x8d903a440_0;
+    %addi 1, 0, 32;
+    %store/vec4 v0x8d903a440_0, 0, 32;
+T_1.12 ;
+T_1.9 ;
+    %end;
+S_0x105725640 .scope module, "dut" "spi_bridge" 2 25, 3 1 0, S_0x10571c3a0;
+ .timescale -9 -12;
+    .port_info 0 /INPUT 1 "clk";
+    .port_info 1 /INPUT 1 "rst_n";
+    .port_info 2 /INPUT 1 "sclk";
+    .port_info 3 /INPUT 1 "cs_n";
+    .port_info 4 /INPUT 1 "mosi";
+    .port_info 5 /OUTPUT 1 "miso";
+    .port_info 6 /OUTPUT 1 "byte_sync";
+    .port_info 7 /OUTPUT 8 "data_in";
+    .port_info 8 /INPUT 8 "data_out";
+L_0x8d9016220 .functor BUFZ 1, v0x8d9039860_0, C4<0>, C4<0>, C4<0>;
+L_0x8d9016290 .functor BUFZ 1, v0x8d9039720_0, C4<0>, C4<0>, C4<0>;
+L_0x8d9016300 .functor BUFZ 8, v0x8d90397c0_0, C4<00000000>, C4<00000000>, C4<00000000>;
+L_0x105728e50 .functor AND 1, L_0x10572ad70, L_0x10572fa50, C4<1>, C4<1>;
+L_0x10572ae10 .functor AND 1, L_0x10572fb90, L_0x8d906c0a0, C4<1>, C4<1>;
+L_0x8d8854058 .functor BUFT 1, C4<00000000000000000000000000000001>, C4<0>, C4<0>, C4<0>;
+v0x8d9038820_0 .net/2u *"_ivl_10", 31 0, L_0x8d8854058;  1 drivers
+v0x8d90388c0_0 .net *"_ivl_12", 0 0, L_0x10572ad70;  1 drivers
+v0x8d9038960_0 .net *"_ivl_14", 31 0, L_0x105728db0;  1 drivers
+L_0x8d88540a0 .functor BUFT 1, C4<0000000000000000000000000000000>, C4<0>, C4<0>, C4<0>;
+v0x8d9038a00_0 .net *"_ivl_17", 30 0, L_0x8d88540a0;  1 drivers
+L_0x8d88540e8 .functor BUFT 1, C4<00000000000000000000000000000000>, C4<0>, C4<0>, C4<0>;
+v0x8d9038aa0_0 .net/2u *"_ivl_18", 31 0, L_0x8d88540e8;  1 drivers
+v0x8d9038b40_0 .net *"_ivl_20", 0 0, L_0x10572fa50;  1 drivers
+v0x8d9038be0_0 .net *"_ivl_24", 31 0, L_0x10572faf0;  1 drivers
+L_0x8d8854130 .functor BUFT 1, C4<0000000000000000000000000000000>, C4<0>, C4<0>, C4<0>;
+v0x8d9038c80_0 .net *"_ivl_27", 30 0, L_0x8d8854130;  1 drivers
+L_0x8d8854178 .functor BUFT 1, C4<00000000000000000000000000000000>, C4<0>, C4<0>, C4<0>;
+v0x8d9038d20_0 .net/2u *"_ivl_28", 31 0, L_0x8d8854178;  1 drivers
+v0x8d9038dc0_0 .net *"_ivl_30", 0 0, L_0x10572fb90;  1 drivers
+v0x8d9038e60_0 .net *"_ivl_32", 31 0, L_0x8d906c000;  1 drivers
+L_0x8d88541c0 .functor BUFT 1, C4<0000000000000000000000000000000>, C4<0>, C4<0>, C4<0>;
+v0x8d9038f00_0 .net *"_ivl_35", 30 0, L_0x8d88541c0;  1 drivers
+L_0x8d8854208 .functor BUFT 1, C4<00000000000000000000000000000001>, C4<0>, C4<0>, C4<0>;
+v0x8d9038fa0_0 .net/2u *"_ivl_36", 31 0, L_0x8d8854208;  1 drivers
+v0x8d9039040_0 .net *"_ivl_38", 0 0, L_0x8d906c0a0;  1 drivers
+v0x8d90390e0_0 .net *"_ivl_6", 31 0, L_0x10572f550;  1 drivers
+L_0x8d8854010 .functor BUFT 1, C4<0000000000000000000000000000000>, C4<0>, C4<0>, C4<0>;
+v0x8d9039180_0 .net *"_ivl_9", 30 0, L_0x8d8854010;  1 drivers
+v0x8d9039220_0 .var "bit_cnt", 2 0;
+v0x8d90392c0_0 .net "byte_sync", 0 0, L_0x8d9016290;  alias, 1 drivers
+v0x8d9039360_0 .net "clk", 0 0, v0x8d903a120_0;  1 drivers
+v0x8d9039400_0 .net "cs_n", 0 0, v0x8d903a1c0_0;  1 drivers
+v0x8d90394a0_0 .net "data_in", 7 0, L_0x8d9016300;  alias, 1 drivers
+v0x8d9039540_0 .net "data_out", 7 0, v0x8d903a3a0_0;  1 drivers
+v0x8d90395e0_0 .net "miso", 0 0, L_0x8d9016220;  alias, 1 drivers
+v0x8d9039680_0 .net "mosi", 0 0, v0x8d903a620_0;  1 drivers
+v0x8d9039720_0 .var "r_byte_sync", 0 0;
+v0x8d90397c0_0 .var "r_data_in", 7 0;
+v0x8d9039860_0 .var "r_miso", 0 0;
+v0x8d9039900_0 .net "rst_n", 0 0, v0x8d903a760_0;  1 drivers
+v0x8d90399a0_0 .net "sclk", 0 0, v0x8d903a800_0;  1 drivers
+v0x8d9039a40_0 .net "sclk_fall", 0 0, L_0x10572ae10;  1 drivers
+v0x8d9039ae0_0 .var "sclk_prev", 0 0;
+v0x8d9039b80_0 .net "sclk_rise", 0 0, L_0x105728e50;  1 drivers
+v0x8d9039c20_0 .var "shift_reg", 7 0;
+E_0x8d8c870c0/0 .event negedge, v0x8d9039900_0;
+E_0x8d8c870c0/1 .event posedge, v0x8d9039360_0;
+E_0x8d8c870c0 .event/or E_0x8d8c870c0/0, E_0x8d8c870c0/1;
+L_0x10572f550 .concat [ 1 31 0 0], v0x8d903a800_0, L_0x8d8854010;
+L_0x10572ad70 .cmp/eq 32, L_0x10572f550, L_0x8d8854058;
+L_0x105728db0 .concat [ 1 31 0 0], v0x8d9039ae0_0, L_0x8d88540a0;
+L_0x10572fa50 .cmp/eq 32, L_0x105728db0, L_0x8d88540e8;
+L_0x10572faf0 .concat [ 1 31 0 0], v0x8d903a800_0, L_0x8d8854130;
+L_0x10572fb90 .cmp/eq 32, L_0x10572faf0, L_0x8d8854178;
+L_0x8d906c000 .concat [ 1 31 0 0], v0x8d9039ae0_0, L_0x8d88541c0;
+L_0x8d906c0a0 .cmp/eq 32, L_0x8d906c000, L_0x8d8854208;
+S_0x10572dc50 .scope task, "send_spi_byte" "send_spi_byte" 2 47, 2 47 0, S_0x10571c3a0;
+ .timescale -9 -12;
+v0x8d9039cc0_0 .var "byte_to_send", 7 0;
+v0x8d9039d60_0 .var "end_cs", 0 0;
+v0x8d9039e00_0 .var/i "i", 31 0;
+v0x8d9039ea0_0 .var "start_cs", 0 0;
+TD_tb_spi_bridge_comprehensive.send_spi_byte ;
+    %load/vec4 v0x8d9039ea0_0;
+    %flag_set/vec4 8;
+    %jmp/0xz  T_2.13, 8;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a1c0_0, 0, 1;
+    %delay 1000000, 0;
+T_2.13 ;
+    %pushi/vec4 0, 0, 8;
+    %store/vec4 v0x8d903a580_0, 0, 8;
+    %pushi/vec4 7, 0, 32;
+    %store/vec4 v0x8d9039e00_0, 0, 32;
+T_2.15 ;
+    %load/vec4 v0x8d9039e00_0;
+    %cmpi/s 0, 0, 32;
+    %flag_inv 5; GE is !LT
+    %jmp/0xz T_2.16, 5;
+    %load/vec4 v0x8d9039cc0_0;
+    %load/vec4 v0x8d9039e00_0;
+    %part/s 1;
+    %store/vec4 v0x8d903a620_0, 0, 1;
+    %delay 1000000, 0;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d903a800_0, 0, 1;
+    %delay 500000, 0;
+    %load/vec4 v0x8d903a4e0_0;
+    %ix/getv/s 4, v0x8d9039e00_0;
+    %store/vec4 v0x8d903a580_0, 4, 1;
+    %delay 500000, 0;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a800_0, 0, 1;
+    %delay 1000000, 0;
+    %load/vec4 v0x8d9039e00_0;
+    %subi 1, 0, 32;
+    %store/vec4 v0x8d9039e00_0, 0, 32;
+    %jmp T_2.15;
+T_2.16 ;
+    %load/vec4 v0x8d9039d60_0;
+    %flag_set/vec4 8;
+    %jmp/0xz  T_2.17, 8;
+    %delay 1000000, 0;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d903a1c0_0, 0, 1;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a620_0, 0, 1;
+    %delay 1000000, 0;
+T_2.17 ;
+    %end;
+S_0x10572ddd0 .scope task, "wait_for_byte_sync" "wait_for_byte_sync" 2 108, 2 108 0, S_0x10571c3a0;
+ .timescale -9 -12;
+v0x8d9039f40_0 .var/i "timeout", 31 0;
+E_0x8d8c87140 .event posedge, v0x8d9039360_0;
+TD_tb_spi_bridge_comprehensive.wait_for_byte_sync ;
+    %pushi/vec4 0, 0, 32;
+    %store/vec4 v0x8d9039f40_0, 0, 32;
+T_3.19 ;
+    %load/vec4 v0x8d903a080_0;
+    %nor/r;
+    %flag_set/vec4 9;
+    %flag_get/vec4 9;
+    %jmp/0 T_3.21, 9;
+    %load/vec4 v0x8d9039f40_0;
+    %cmpi/s 1000, 0, 32;
+    %flag_get/vec4 5;
+    %and;
+T_3.21;
+    %flag_set/vec4 8;
+    %jmp/0xz T_3.20, 8;
+    %wait E_0x8d8c87140;
+    %load/vec4 v0x8d9039f40_0;
+    %addi 1, 0, 32;
+    %store/vec4 v0x8d9039f40_0, 0, 32;
+    %jmp T_3.19;
+T_3.20 ;
+    %load/vec4 v0x8d9039f40_0;
+    %cmpi/s 1000, 0, 32;
+    %flag_inv 5; GE is !LT
+    %jmp/0xz  T_3.22, 5;
+    %vpi_call 2 117 "$display", " [FAIL] Timeout waiting for byte_sync" {0 0 0};
+T_3.22 ;
+    %end;
+    .scope S_0x105725640;
+T_4 ;
+    %wait E_0x8d8c870c0;
+    %load/vec4 v0x8d9039900_0;
+    %nor/r;
+    %flag_set/vec4 8;
+    %jmp/0xz  T_4.0, 8;
+    %pushi/vec4 0, 0, 1;
+    %assign/vec4 v0x8d9039ae0_0, 0;
+    %pushi/vec4 0, 0, 1;
+    %assign/vec4 v0x8d9039860_0, 0;
+    %pushi/vec4 0, 0, 1;
+    %assign/vec4 v0x8d9039720_0, 0;
+    %pushi/vec4 0, 0, 8;
+    %assign/vec4 v0x8d90397c0_0, 0;
+    %pushi/vec4 0, 0, 3;
+    %assign/vec4 v0x8d9039220_0, 0;
+    %pushi/vec4 0, 0, 8;
+    %assign/vec4 v0x8d9039c20_0, 0;
+    %jmp T_4.1;
+T_4.0 ;
+    %load/vec4 v0x8d90399a0_0;
+    %assign/vec4 v0x8d9039ae0_0, 0;
+    %pushi/vec4 0, 0, 1;
+    %assign/vec4 v0x8d9039720_0, 0;
+    %load/vec4 v0x8d9039400_0;
+    %flag_set/vec4 8;
+    %jmp/0xz  T_4.2, 8;
+    %pushi/vec4 0, 0, 3;
+    %assign/vec4 v0x8d9039220_0, 0;
+    %jmp T_4.3;
+T_4.2 ;
+    %load/vec4 v0x8d9039220_0;
+    %pad/u 32;
+    %cmpi/e 0, 0, 32;
+    %flag_get/vec4 4;
+    %jmp/0 T_4.6, 4;
+    %load/vec4 v0x8d90399a0_0;
+    %nor/r;
+    %and;
+T_4.6;
+    %flag_set/vec4 8;
+    %jmp/0xz  T_4.4, 8;
+    %load/vec4 v0x8d9039540_0;
+    %parti/s 1, 7, 4;
+    %assign/vec4 v0x8d9039860_0, 0;
+T_4.4 ;
+    %load/vec4 v0x8d9039b80_0;
+    %flag_set/vec4 8;
+    %jmp/0xz  T_4.7, 8;
+    %load/vec4 v0x8d9039c20_0;
+    %parti/s 7, 0, 2;
+    %load/vec4 v0x8d9039680_0;
+    %concat/vec4; draw_concat_vec4
+    %assign/vec4 v0x8d9039c20_0, 0;
+    %load/vec4 v0x8d9039220_0;
+    %pad/u 32;
+    %cmpi/e 7, 0, 32;
+    %jmp/0xz  T_4.9, 4;
+    %pushi/vec4 0, 0, 3;
+    %assign/vec4 v0x8d9039220_0, 0;
+    %load/vec4 v0x8d9039c20_0;
+    %parti/s 7, 0, 2;
+    %load/vec4 v0x8d9039680_0;
+    %concat/vec4; draw_concat_vec4
+    %assign/vec4 v0x8d90397c0_0, 0;
+    %pushi/vec4 1, 0, 1;
+    %assign/vec4 v0x8d9039720_0, 0;
+    %jmp T_4.10;
+T_4.9 ;
+    %load/vec4 v0x8d9039220_0;
+    %addi 1, 0, 3;
+    %assign/vec4 v0x8d9039220_0, 0;
+T_4.10 ;
+T_4.7 ;
+    %load/vec4 v0x8d9039a40_0;
+    %flag_set/vec4 8;
+    %jmp/0xz  T_4.11, 8;
+    %load/vec4 v0x8d9039540_0;
+    %pushi/vec4 7, 0, 32;
+    %load/vec4 v0x8d9039220_0;
+    %pad/u 32;
+    %sub;
+    %part/u 1;
+    %assign/vec4 v0x8d9039860_0, 0;
+T_4.11 ;
+T_4.3 ;
+T_4.1 ;
+    %jmp T_4;
+    .thread T_4;
+    .scope S_0x10571c3a0;
+T_5 ;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a120_0, 0, 1;
+    %end;
+    .thread T_5;
+    .scope S_0x10571c3a0;
+T_6 ;
+    %delay 50000, 0;
+    %load/vec4 v0x8d903a120_0;
+    %inv;
+    %store/vec4 v0x8d903a120_0, 0, 1;
+    %jmp T_6;
+    .thread T_6;
+    .scope S_0x10571c3a0;
+T_7 ;
+    %wait E_0x8d8c87140;
+    %load/vec4 v0x8d9039fe0_0;
+    %flag_set/vec4 8;
+    %jmp/0xz  T_7.0, 8;
+    %pushi/vec4 1, 0, 1;
+    %assign/vec4 v0x8d903a080_0, 0;
+    %load/vec4 v0x8d903a260_0;
+    %assign/vec4 v0x8d903a300_0, 0;
+T_7.0 ;
+    %jmp T_7;
+    .thread T_7;
+    .scope S_0x10571c3a0;
+T_8 ;
+    %vpi_call 2 164 "$dumpfile", "dump.vcd" {0 0 0};
+    %vpi_call 2 165 "$dumpvars", 32'sb00000000000000000000000000000000, S_0x10571c3a0 {0 0 0};
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a760_0, 0, 1;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a800_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d903a1c0_0, 0, 1;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a620_0, 0, 1;
+    %pushi/vec4 0, 0, 8;
+    %store/vec4 v0x8d903a3a0_0, 0, 8;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a080_0, 0, 1;
+    %pushi/vec4 0, 0, 32;
+    %store/vec4 v0x8d903a8a0_0, 0, 32;
+    %pushi/vec4 0, 0, 32;
+    %store/vec4 v0x8d903a6c0_0, 0, 32;
+    %pushi/vec4 0, 0, 32;
+    %store/vec4 v0x8d903a440_0, 0, 32;
+    %delay 50000, 0;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d903a760_0, 0, 1;
+    %delay 100000, 0;
+    %vpi_call 2 180 "$display", "========================================" {0 0 0};
+    %vpi_call 2 181 "$display", "=== COMPREHENSIVE SPI BRIDGE TESTS ===" {0 0 0};
+    %vpi_call 2 182 "$display", "========================================" {0 0 0};
+    %vpi_call 2 185 "$display", "\012--- Test 1: All zeros ---" {0 0 0};
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a080_0, 0, 1;
+    %pushi/vec4 0, 0, 8;
+    %store/vec4 v0x8d903a3a0_0, 0, 8;
+    %pushi/vec4 0, 0, 8;
+    %store/vec4 v0x8d9039cc0_0, 0, 8;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9039ea0_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9039d60_0, 0, 1;
+    %fork TD_tb_spi_bridge_comprehensive.send_spi_byte, S_0x10572dc50;
+    %join;
+    %fork TD_tb_spi_bridge_comprehensive.wait_for_byte_sync, S_0x10572ddd0;
+    %join;
+    %pushi/vec4 0, 0, 8;
+    %store/vec4 v0x8d90386e0_0, 0, 8;
+    %pushi/vec4 0, 0, 8;
+    %store/vec4 v0x8d9038640_0, 0, 8;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d90385a0_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9038500_0, 0, 1;
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 65, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 1819025530, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 1701998451, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %store/vec4 v0x8d9038780_0, 0, 256;
+    %fork TD_tb_spi_bridge_comprehensive.check_result, S_0x1057254c0;
+    %join;
+    %delay 200000, 0;
+    %vpi_call 2 194 "$display", "\012--- Test 2: All ones ---" {0 0 0};
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a080_0, 0, 1;
+    %pushi/vec4 255, 0, 8;
+    %store/vec4 v0x8d903a3a0_0, 0, 8;
+    %pushi/vec4 255, 0, 8;
+    %store/vec4 v0x8d9039cc0_0, 0, 8;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9039ea0_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9039d60_0, 0, 1;
+    %fork TD_tb_spi_bridge_comprehensive.send_spi_byte, S_0x10572dc50;
+    %join;
+    %fork TD_tb_spi_bridge_comprehensive.wait_for_byte_sync, S_0x10572ddd0;
+    %join;
+    %pushi/vec4 255, 0, 8;
+    %store/vec4 v0x8d90386e0_0, 0, 8;
+    %pushi/vec4 255, 0, 8;
+    %store/vec4 v0x8d9038640_0, 0, 8;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d90385a0_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9038500_0, 0, 1;
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 1097624608, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 1869505907, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %store/vec4 v0x8d9038780_0, 0, 256;
+    %fork TD_tb_spi_bridge_comprehensive.check_result, S_0x1057254c0;
+    %join;
+    %delay 200000, 0;
+    %vpi_call 2 203 "$display", "\012--- Test 3: Pattern 0xAA ---" {0 0 0};
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a080_0, 0, 1;
+    %pushi/vec4 170, 0, 8;
+    %store/vec4 v0x8d903a3a0_0, 0, 8;
+    %pushi/vec4 170, 0, 8;
+    %store/vec4 v0x8d9039cc0_0, 0, 8;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9039ea0_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9039d60_0, 0, 1;
+    %fork TD_tb_spi_bridge_comprehensive.send_spi_byte, S_0x10572dc50;
+    %join;
+    %fork TD_tb_spi_bridge_comprehensive.wait_for_byte_sync, S_0x10572ddd0;
+    %join;
+    %pushi/vec4 170, 0, 8;
+    %store/vec4 v0x8d90386e0_0, 0, 8;
+    %pushi/vec4 170, 0, 8;
+    %store/vec4 v0x8d9038640_0, 0, 8;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d90385a0_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9038500_0, 0, 1;
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 1348564084, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 1701998112, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 813187393, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %store/vec4 v0x8d9038780_0, 0, 256;
+    %fork TD_tb_spi_bridge_comprehensive.check_result, S_0x1057254c0;
+    %join;
+    %delay 200000, 0;
+    %vpi_call 2 212 "$display", "\012--- Test 4: Pattern 0x55 ---" {0 0 0};
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a080_0, 0, 1;
+    %pushi/vec4 85, 0, 8;
+    %store/vec4 v0x8d903a3a0_0, 0, 8;
+    %pushi/vec4 85, 0, 8;
+    %store/vec4 v0x8d9039cc0_0, 0, 8;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9039ea0_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9039d60_0, 0, 1;
+    %fork TD_tb_spi_bridge_comprehensive.send_spi_byte, S_0x10572dc50;
+    %join;
+    %fork TD_tb_spi_bridge_comprehensive.wait_for_byte_sync, S_0x10572ddd0;
+    %join;
+    %pushi/vec4 85, 0, 8;
+    %store/vec4 v0x8d90386e0_0, 0, 8;
+    %pushi/vec4 85, 0, 8;
+    %store/vec4 v0x8d9038640_0, 0, 8;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d90385a0_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9038500_0, 0, 1;
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 1348564084, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 1701998112, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 813184309, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %store/vec4 v0x8d9038780_0, 0, 256;
+    %fork TD_tb_spi_bridge_comprehensive.check_result, S_0x1057254c0;
+    %join;
+    %delay 200000, 0;
+    %vpi_call 2 221 "$display", "\012--- Test 5: Walking 1s ---" {0 0 0};
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a080_0, 0, 1;
+    %pushi/vec4 1, 0, 8;
+    %store/vec4 v0x8d903a3a0_0, 0, 8;
+    %pushi/vec4 128, 0, 8;
+    %store/vec4 v0x8d9039cc0_0, 0, 8;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9039ea0_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9039d60_0, 0, 1;
+    %fork TD_tb_spi_bridge_comprehensive.send_spi_byte, S_0x10572dc50;
+    %join;
+    %fork TD_tb_spi_bridge_comprehensive.wait_for_byte_sync, S_0x10572ddd0;
+    %join;
+    %pushi/vec4 128, 0, 8;
+    %store/vec4 v0x8d90386e0_0, 0, 8;
+    %pushi/vec4 1, 0, 8;
+    %store/vec4 v0x8d9038640_0, 0, 8;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d90385a0_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9038500_0, 0, 1;
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 22369, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 1818978670, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 1730163059, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %store/vec4 v0x8d9038780_0, 0, 256;
+    %fork TD_tb_spi_bridge_comprehensive.check_result, S_0x1057254c0;
+    %join;
+    %delay 200000, 0;
+    %vpi_call 2 230 "$display", "\012--- Test 6: Full duplex (TX:0xF0 RX:0x0F) ---" {0 0 0};
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a080_0, 0, 1;
+    %pushi/vec4 240, 0, 8;
+    %store/vec4 v0x8d903a3a0_0, 0, 8;
+    %pushi/vec4 15, 0, 8;
+    %store/vec4 v0x8d9039cc0_0, 0, 8;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9039ea0_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9039d60_0, 0, 1;
+    %fork TD_tb_spi_bridge_comprehensive.send_spi_byte, S_0x10572dc50;
+    %join;
+    %fork TD_tb_spi_bridge_comprehensive.wait_for_byte_sync, S_0x10572ddd0;
+    %join;
+    %pushi/vec4 15, 0, 8;
+    %store/vec4 v0x8d90386e0_0, 0, 8;
+    %pushi/vec4 240, 0, 8;
+    %store/vec4 v0x8d9038640_0, 0, 8;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d90385a0_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9038500_0, 0, 1;
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 4617580, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 1814062197, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 1886152056, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %store/vec4 v0x8d9038780_0, 0, 256;
+    %fork TD_tb_spi_bridge_comprehensive.check_result, S_0x1057254c0;
+    %join;
+    %delay 200000, 0;
+    %vpi_call 2 239 "$display", "\012--- Test 7: Back-to-back transfers ---" {0 0 0};
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a080_0, 0, 1;
+    %pushi/vec4 222, 0, 8;
+    %store/vec4 v0x8d903a3a0_0, 0, 8;
+    %pushi/vec4 171, 0, 8;
+    %store/vec4 v0x8d9039cc0_0, 0, 8;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9039ea0_0, 0, 1;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d9039d60_0, 0, 1;
+    %fork TD_tb_spi_bridge_comprehensive.send_spi_byte, S_0x10572dc50;
+    %join;
+    %fork TD_tb_spi_bridge_comprehensive.wait_for_byte_sync, S_0x10572ddd0;
+    %join;
+    %pushi/vec4 171, 0, 8;
+    %store/vec4 v0x8d90386e0_0, 0, 8;
+    %pushi/vec4 222, 0, 8;
+    %store/vec4 v0x8d9038640_0, 0, 8;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d90385a0_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9038500_0, 0, 1;
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 18025, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 1920168992, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 1652126821, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %store/vec4 v0x8d9038780_0, 0, 256;
+    %fork TD_tb_spi_bridge_comprehensive.check_result, S_0x1057254c0;
+    %join;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a080_0, 0, 1;
+    %pushi/vec4 239, 0, 8;
+    %store/vec4 v0x8d903a3a0_0, 0, 8;
+    %pushi/vec4 205, 0, 8;
+    %store/vec4 v0x8d9039cc0_0, 0, 8;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d9039ea0_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9039d60_0, 0, 1;
+    %fork TD_tb_spi_bridge_comprehensive.send_spi_byte, S_0x10572dc50;
+    %join;
+    %fork TD_tb_spi_bridge_comprehensive.wait_for_byte_sync, S_0x10572ddd0;
+    %join;
+    %pushi/vec4 205, 0, 8;
+    %store/vec4 v0x8d90386e0_0, 0, 8;
+    %pushi/vec4 239, 0, 8;
+    %store/vec4 v0x8d9038640_0, 0, 8;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d90385a0_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9038500_0, 0, 1;
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 5465443, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 1869505568, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 1652126821, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %store/vec4 v0x8d9038780_0, 0, 256;
+    %fork TD_tb_spi_bridge_comprehensive.check_result, S_0x1057254c0;
+    %join;
+    %delay 200000, 0;
+    %vpi_call 2 254 "$display", "\012--- Test 8: Three consecutive bytes ---" {0 0 0};
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a080_0, 0, 1;
+    %pushi/vec4 17, 0, 8;
+    %store/vec4 v0x8d903a3a0_0, 0, 8;
+    %pushi/vec4 170, 0, 8;
+    %store/vec4 v0x8d9039cc0_0, 0, 8;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9039ea0_0, 0, 1;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d9039d60_0, 0, 1;
+    %fork TD_tb_spi_bridge_comprehensive.send_spi_byte, S_0x10572dc50;
+    %join;
+    %fork TD_tb_spi_bridge_comprehensive.wait_for_byte_sync, S_0x10572ddd0;
+    %join;
+    %pushi/vec4 170, 0, 8;
+    %store/vec4 v0x8d90386e0_0, 0, 8;
+    %pushi/vec4 17, 0, 8;
+    %store/vec4 v0x8d9038640_0, 0, 8;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d90385a0_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9038500_0, 0, 1;
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 1115255909, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 540094259, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %store/vec4 v0x8d9038780_0, 0, 256;
+    %fork TD_tb_spi_bridge_comprehensive.check_result, S_0x1057254c0;
+    %join;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a080_0, 0, 1;
+    %pushi/vec4 34, 0, 8;
+    %store/vec4 v0x8d903a3a0_0, 0, 8;
+    %pushi/vec4 187, 0, 8;
+    %store/vec4 v0x8d9039cc0_0, 0, 8;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d9039ea0_0, 0, 1;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d9039d60_0, 0, 1;
+    %fork TD_tb_spi_bridge_comprehensive.send_spi_byte, S_0x10572dc50;
+    %join;
+    %fork TD_tb_spi_bridge_comprehensive.wait_for_byte_sync, S_0x10572ddd0;
+    %join;
+    %pushi/vec4 187, 0, 8;
+    %store/vec4 v0x8d90386e0_0, 0, 8;
+    %pushi/vec4 34, 0, 8;
+    %store/vec4 v0x8d9038640_0, 0, 8;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d90385a0_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9038500_0, 0, 1;
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 1115255909, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 540159795, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %store/vec4 v0x8d9038780_0, 0, 256;
+    %fork TD_tb_spi_bridge_comprehensive.check_result, S_0x1057254c0;
+    %join;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a080_0, 0, 1;
+    %pushi/vec4 51, 0, 8;
+    %store/vec4 v0x8d903a3a0_0, 0, 8;
+    %pushi/vec4 204, 0, 8;
+    %store/vec4 v0x8d9039cc0_0, 0, 8;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d9039ea0_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9039d60_0, 0, 1;
+    %fork TD_tb_spi_bridge_comprehensive.send_spi_byte, S_0x10572dc50;
+    %join;
+    %fork TD_tb_spi_bridge_comprehensive.wait_for_byte_sync, S_0x10572ddd0;
+    %join;
+    %pushi/vec4 204, 0, 8;
+    %store/vec4 v0x8d90386e0_0, 0, 8;
+    %pushi/vec4 51, 0, 8;
+    %store/vec4 v0x8d9038640_0, 0, 8;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d90385a0_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9038500_0, 0, 1;
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 1115255909, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 540225331, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %store/vec4 v0x8d9038780_0, 0, 256;
+    %fork TD_tb_spi_bridge_comprehensive.check_result, S_0x1057254c0;
+    %join;
+    %delay 200000, 0;
+    %vpi_call 2 275 "$display", "\012--- Test 9: CS abort at bit 4 ---" {0 0 0};
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a080_0, 0, 1;
+    %pushi/vec4 153, 0, 8;
+    %store/vec4 v0x8d903a3a0_0, 0, 8;
+    %pushi/vec4 171, 0, 8;
+    %store/vec4 v0x8d90383c0_0, 0, 8;
+    %pushi/vec4 4, 0, 32;
+    %store/vec4 v0x8d9038320_0, 0, 32;
+    %fork TD_tb_spi_bridge_comprehensive.abort_transfer, S_0x10571c520;
+    %join;
+    %delay 200000, 0;
+    %load/vec4 v0x8d903a080_0;
+    %nor/r;
+    %flag_set/vec4 8;
+    %jmp/0xz  T_8.0, 8;
+    %vpi_call 2 281 "$display", " [PASS] CS abort: No byte_sync" {0 0 0};
+    %load/vec4 v0x8d903a8a0_0;
+    %addi 1, 0, 32;
+    %store/vec4 v0x8d903a8a0_0, 0, 32;
+    %load/vec4 v0x8d903a6c0_0;
+    %addi 1, 0, 32;
+    %store/vec4 v0x8d903a6c0_0, 0, 32;
+    %jmp T_8.1;
+T_8.0 ;
+    %vpi_call 2 285 "$display", " [FAIL] CS abort: Unexpected byte_sync" {0 0 0};
+    %load/vec4 v0x8d903a8a0_0;
+    %addi 1, 0, 32;
+    %store/vec4 v0x8d903a8a0_0, 0, 32;
+    %load/vec4 v0x8d903a440_0;
+    %addi 1, 0, 32;
+    %store/vec4 v0x8d903a440_0, 0, 32;
+T_8.1 ;
+    %delay 200000, 0;
+    %vpi_call 2 292 "$display", "\012--- Test 10: byte_sync pulse width ---" {0 0 0};
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a080_0, 0, 1;
+    %pushi/vec4 119, 0, 8;
+    %store/vec4 v0x8d903a3a0_0, 0, 8;
+    %pushi/vec4 136, 0, 8;
+    %store/vec4 v0x8d9039cc0_0, 0, 8;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9039ea0_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9039d60_0, 0, 1;
+    %fork TD_tb_spi_bridge_comprehensive.send_spi_byte, S_0x10572dc50;
+    %join;
+    %fork TD_tb_spi_bridge_comprehensive.wait_for_byte_sync, S_0x10572ddd0;
+    %join;
+    %delay 20000, 0;
+    %load/vec4 v0x8d9039fe0_0;
+    %nor/r;
+    %flag_set/vec4 8;
+    %jmp/0xz  T_8.2, 8;
+    %vpi_call 2 299 "$display", " [PASS] byte_sync is single-cycle" {0 0 0};
+    %load/vec4 v0x8d903a8a0_0;
+    %addi 1, 0, 32;
+    %store/vec4 v0x8d903a8a0_0, 0, 32;
+    %load/vec4 v0x8d903a6c0_0;
+    %addi 1, 0, 32;
+    %store/vec4 v0x8d903a6c0_0, 0, 32;
+    %jmp T_8.3;
+T_8.2 ;
+    %vpi_call 2 303 "$display", " [FAIL] byte_sync stuck high" {0 0 0};
+    %load/vec4 v0x8d903a8a0_0;
+    %addi 1, 0, 32;
+    %store/vec4 v0x8d903a8a0_0, 0, 32;
+    %load/vec4 v0x8d903a440_0;
+    %addi 1, 0, 32;
+    %store/vec4 v0x8d903a440_0, 0, 32;
+T_8.3 ;
+    %delay 200000, 0;
+    %vpi_call 2 310 "$display", "\012--- Test 11: Reset during transfer ---" {0 0 0};
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a080_0, 0, 1;
+    %pushi/vec4 18, 0, 8;
+    %store/vec4 v0x8d903a3a0_0, 0, 8;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a1c0_0, 0, 1;
+    %delay 1000000, 0;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d903a620_0, 0, 1;
+    %delay 1000000, 0;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d903a800_0, 0, 1;
+    %delay 1000000, 0;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a800_0, 0, 1;
+    %delay 1000000, 0;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a620_0, 0, 1;
+    %delay 1000000, 0;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d903a800_0, 0, 1;
+    %delay 1000000, 0;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a800_0, 0, 1;
+    %delay 1000000, 0;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a760_0, 0, 1;
+    %delay 500000, 0;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d903a760_0, 0, 1;
+    %delay 2000000, 0;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d903a1c0_0, 0, 1;
+    %load/vec4 v0x8d903a080_0;
+    %nor/r;
+    %flag_set/vec4 8;
+    %jmp/0xz  T_8.4, 8;
+    %vpi_call 2 326 "$display", " [PASS] Reset: No spurious byte_sync" {0 0 0};
+    %load/vec4 v0x8d903a8a0_0;
+    %addi 1, 0, 32;
+    %store/vec4 v0x8d903a8a0_0, 0, 32;
+    %load/vec4 v0x8d903a6c0_0;
+    %addi 1, 0, 32;
+    %store/vec4 v0x8d903a6c0_0, 0, 32;
+    %jmp T_8.5;
+T_8.4 ;
+    %vpi_call 2 330 "$display", " [FAIL] Reset: Unexpected byte_sync" {0 0 0};
+    %load/vec4 v0x8d903a8a0_0;
+    %addi 1, 0, 32;
+    %store/vec4 v0x8d903a8a0_0, 0, 32;
+    %load/vec4 v0x8d903a440_0;
+    %addi 1, 0, 32;
+    %store/vec4 v0x8d903a440_0, 0, 32;
+T_8.5 ;
+    %delay 200000, 0;
+    %vpi_call 2 337 "$display", "\012--- Test 12: Minimal CS gap ---" {0 0 0};
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a080_0, 0, 1;
+    %pushi/vec4 66, 0, 8;
+    %store/vec4 v0x8d903a3a0_0, 0, 8;
+    %pushi/vec4 36, 0, 8;
+    %store/vec4 v0x8d9039cc0_0, 0, 8;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9039ea0_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9039d60_0, 0, 1;
+    %fork TD_tb_spi_bridge_comprehensive.send_spi_byte, S_0x10572dc50;
+    %join;
+    %fork TD_tb_spi_bridge_comprehensive.wait_for_byte_sync, S_0x10572ddd0;
+    %join;
+    %pushi/vec4 36, 0, 8;
+    %store/vec4 v0x8d90386e0_0, 0, 8;
+    %pushi/vec4 66, 0, 8;
+    %store/vec4 v0x8d9038640_0, 0, 8;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d90385a0_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9038500_0, 0, 1;
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 16997, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 1718579813, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 543646064, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %store/vec4 v0x8d9038780_0, 0, 256;
+    %fork TD_tb_spi_bridge_comprehensive.check_result, S_0x1057254c0;
+    %join;
+    %delay 20000, 0;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x8d903a080_0, 0, 1;
+    %pushi/vec4 102, 0, 8;
+    %store/vec4 v0x8d903a3a0_0, 0, 8;
+    %pushi/vec4 153, 0, 8;
+    %store/vec4 v0x8d9039cc0_0, 0, 8;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9039ea0_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9039d60_0, 0, 1;
+    %fork TD_tb_spi_bridge_comprehensive.send_spi_byte, S_0x10572dc50;
+    %join;
+    %fork TD_tb_spi_bridge_comprehensive.wait_for_byte_sync, S_0x10572ddd0;
+    %join;
+    %pushi/vec4 153, 0, 8;
+    %store/vec4 v0x8d90386e0_0, 0, 8;
+    %pushi/vec4 102, 0, 8;
+    %store/vec4 v0x8d9038640_0, 0, 8;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d90385a0_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x8d9038500_0, 0, 1;
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 0, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 65, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 1718904178, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %pushi/vec4 543646064, 0, 32; draw_string_vec4
+    %concat/vec4; draw_string_vec4
+    %store/vec4 v0x8d9038780_0, 0, 256;
+    %fork TD_tb_spi_bridge_comprehensive.check_result, S_0x1057254c0;
+    %join;
+    %delay 200000, 0;
+    %vpi_call 2 353 "$display", "\012========================================" {0 0 0};
+    %vpi_call 2 354 "$display", "=== TEST SUMMARY ===" {0 0 0};
+    %vpi_call 2 355 "$display", "Total: %0d | Passed: %0d | Failed: %0d", v0x8d903a8a0_0, v0x8d903a6c0_0, v0x8d903a440_0 {0 0 0};
+    %load/vec4 v0x8d903a440_0;
+    %cmpi/e 0, 0, 32;
+    %jmp/0xz  T_8.6, 4;
+    %vpi_call 2 358 "$display", "=== ALL TESTS PASSED ===" {0 0 0};
+    %jmp T_8.7;
+T_8.6 ;
+    %vpi_call 2 360 "$display", "=== %0d TESTS FAILED ===", v0x8d903a440_0 {0 0 0};
+T_8.7 ;
+    %vpi_call 2 361 "$display", "========================================" {0 0 0};
+    %vpi_call 2 363 "$finish" {0 0 0};
+    %end;
+    .thread T_8;
+# The file index is used to find the file name in the following table.
+:file_names 4;
+    "N/A";
+    "<interactive>";
+    "tb_spi_bridge.v";
+    "spi_bridge.v";
