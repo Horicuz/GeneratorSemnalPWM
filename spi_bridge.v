@@ -12,72 +12,89 @@ module spi_bridge (
     output[7:0] data_in,
     input[7:0] data_out
 );
-    // declar registrii pentru a folosi in blocurile always
+    // Registri de iesire
     reg r_miso;
     reg r_byte_sync;
     reg [7:0] r_data_in;
 
-    // legan registrele interne la iesirile modulului
     assign miso = r_miso;
     assign byte_sync = r_byte_sync;
     assign data_in = r_data_in;
 
-    // variabile interne folosite pentru logica
-    reg [2:0] bit_cnt; // numara de la 0 la 7 (counter)
-    reg [7:0] shift_reg; // retine datele de la MOSI
-    reg sclk_prev; // retine starea anterioara a sclk
+    // Logica SPI - functioneaza pe sclk
+    reg [2:0] bit_cnt;
+    reg [7:0] shift_reg;
+    
+    // Counter pentru byte-uri complete (incrementat pe sclk domain)
+    reg [7:0] byte_counter;
+    reg [7:0] byte_counter_sync1;
+    reg [7:0] byte_counter_sync2;
+    reg [7:0] byte_counter_prev;
+    
+    // Date capturate
+    reg [7:0] captured_data;
 
-    wire sclk_rise = (sclk == 1) && (sclk_prev == 0);
-    wire sclk_fall = (sclk == 0) && (sclk_prev == 1);
-
-    always @(posedge clk or negedge rst_n) begin
-        if(!rst_n) begin
-            // reset
-            sclk_prev <= 0;
-            r_miso <= 0;
-            r_byte_sync <= 0;
-            r_data_in <= 0;
+    // Logica pe rising edge sclk - captura date de pe mosi
+    always @(posedge sclk or negedge rst_n) begin
+        if (!rst_n) begin
             bit_cnt <= 0;
             shift_reg <= 0;
-        end
-        else begin
-            sclk_prev <= sclk;
-            // pulsul de sync trebuie sa fie 0, il facem 1 doar cand terminam un byte
-            r_byte_sync <= 0;
-
-            // SPI functioneaza doar cand Chip Select (CS) este activ (pe Low, adica 0)
-            // daca CS e inactiv (High), resetam contorul de biti
-            if (cs_n) begin
+            byte_counter <= 0;
+            captured_data <= 0;
+        end else if (cs_n) begin
+            bit_cnt <= 0;
+        end else begin
+            // Shift in MOSI bit
+            shift_reg <= {shift_reg[6:0], mosi};
+            
+            if (bit_cnt == 7) begin
                 bit_cnt <= 0;
+                captured_data <= {shift_reg[6:0], mosi};
+                byte_counter <= byte_counter + 1;
+            end else begin
+                bit_cnt <= bit_cnt + 1;
             end
-            else begin
-                // stan MISO pentru primul bit cand CS este activ si bit_cnt = 0
-                if (bit_cnt == 0 && !sclk) begin
-                    r_miso <= data_out[7];
-                end
+        end
+    end
+    
+    // Logica pe falling edge sclk - setare MISO
+    always @(negedge sclk or negedge rst_n) begin
+        if (!rst_n) begin
+            r_miso <= 0;
+        end else if (!cs_n) begin
+            // Output next bit (MSB first)
+            r_miso <= data_out[7 - bit_cnt];
+        end
+    end
+    
+    // Prima setare MISO cand CS devine activ
+    always @(negedge cs_n or negedge rst_n) begin
+        if (!rst_n) begin
+            // handled above
+        end else begin
+            r_miso <= data_out[7];
+        end
+    end
 
-                if(sclk_rise) begin
-                    // pastram ultimii 7 biti si adaugam ultimul bit la sfarsit
-                    shift_reg <= {shift_reg[6:0], mosi};
-
-                    // daca am primit 8 biti
-                    if(bit_cnt == 7) begin
-                        bit_cnt <= 0;
-                        r_data_in <= {shift_reg[6:0], mosi};
-                        r_byte_sync <= 1;
-                    end
-                    else begin
-                        // incrementam contorul
-                        bit_cnt <= bit_cnt + 1;
-                    end
-                end
-
-                if(sclk_fall) begin
-                    // trimitem bit-ul corect din data_out MSB first
-                    // cand bit_cnt este 0, trimitem bitul 7. cand e 1, trimitem 6.
-                    // (formula este deci: 7 - bit_cnt)
-                    r_miso <= data_out[7 - bit_cnt];
-                end
+    // Sincronizare byte_counter catre domeniul clk
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            byte_counter_sync1 <= 0;
+            byte_counter_sync2 <= 0;
+            byte_counter_prev <= 0;
+            r_byte_sync <= 0;
+            r_data_in <= 0;
+        end else begin
+            // Double-sync byte_counter
+            byte_counter_sync1 <= byte_counter;
+            byte_counter_sync2 <= byte_counter_sync1;
+            byte_counter_prev <= byte_counter_sync2;
+            
+            // Detecteaza cand s-a completat un byte nou
+            r_byte_sync <= 0;
+            if (byte_counter_sync2 != byte_counter_prev) begin
+                r_byte_sync <= 1;
+                r_data_in <= captured_data;
             end
         end
     end

@@ -73,32 +73,25 @@ module instr_dcd (
                         // bitul 7: 1 = write, 0 = read
                         is_read_op <= (data_in[7] == 0);
 
-                        // bitul 6: MSB/LSB select
+                        // bitul 6: MSB/LSB select (informational, nu modifica adresa)
                         byte_sel <= data_in[6];
 
-                        // bits 5:0 = adresa
+                        // bits 5:0 = adresa directa
                         base_addr <= data_in[5:0];
 
-                        // pt READ: calculam adresa cu offset imediat
-                        // pt WRITE: folosim adresa de baza (offset-ul se aplica in DATA)
-                        if (data_in[7] == 0) begin
-                            // READ operation - calculam adresa cu offset
-                            r_addr <= data_in[5:0] + (data_in[6] ? 6'd1 : 6'd0);
-                        end else begin
-                            // WRITE operation - adresa de baza
-                            r_addr <= data_in[5:0];
-                        end
+                        // adresa e folosita direct, fara offset
+                        r_addr <= data_in[5:0];
 
-                        // setam r_read
+                        // setam r_read pentru READ operations
                         r_read <= (data_in[7] == 0);
 
                         state <= ST_DATA;
                     end
 
                     ST_DATA: begin
-                        // Pentru WRITE, calculam adresa efectiva acum
+                        // Pentru WRITE, folosim adresa direct (byte_sel nu modifica adresa)
                         if(!is_read_op) begin
-                            r_addr <= base_addr + (byte_sel ? 6'd1 : 6'd0);
+                            r_addr <= base_addr;
                             // daca e scriere, luam datele primite si le trimitem la registrii
                             r_data_write <= data_in;
                             r_write <= 1; // activam write mode

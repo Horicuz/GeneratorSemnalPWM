@@ -54,6 +54,4 @@ module counter (
         end
     end
 
-
-
 endmodule

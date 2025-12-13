@@ -20,16 +20,31 @@ module pwm_gen (
     always @(*) begin
         if (!pwm_en) begin
             r_pwm = 1'b0;
+        end else if (compare1 == compare2) begin
+            // Caz special: daca compare1 == compare2, PWM e mereu 0
+            // (intervalul de activare are latime 0)
+            r_pwm = 1'b0;
         end else begin
             if (!align_mode) begin
-                if (count_val < compare1) begin
-                    // inainte de compare1
-                    r_pwm = (align_right ? 1'b0 : 1'b1);
+                // Mod aliniat
+                if (!align_right) begin
+                    // Align left: PWM e HIGH cand count_val <= compare1
+                    // Caz special: daca compare1 == 0, PWM nu se activeaza niciodata
+                    if (compare1 == 16'd0)
+                        r_pwm = 1'b0;
+                    else if (count_val <= compare1)
+                        r_pwm = 1'b1;
+                    else
+                        r_pwm = 1'b0;
                 end else begin
-                    // la sau dupa compare1 (inclusiv)
-                    r_pwm = (align_right ? 1'b1 : 1'b0);
+                    // Align right: PWM e HIGH cand count_val >= compare1
+                    if (count_val < compare1)
+                        r_pwm = 1'b0;
+                    else
+                        r_pwm = 1'b1;
                 end
             end else begin
+                // Mod nealiniat: HIGH intre compare1 si compare2
                 if (count_val < compare1) begin
                     r_pwm = 1'b0;
                 end else if (count_val < compare2) begin

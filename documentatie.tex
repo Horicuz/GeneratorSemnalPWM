@@ -1,0 +1,123 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[romanian]{babel}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+
+\title{Documentație tehnică – Implementare periferic PWM cu interfață SPI}
+\author{Echipa: \_\_\_}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Introducere}
+
+Acest document descrie implementarea perifericului PWM, cu accent pe deciziile funcționale și arhitecturale din cod. Pentru fiecare modul sunt prezentate motivele care au stat la baza implementării, modul în care acestea respectă cerințele funcționale și felul în care componentele interacționează între ele.
+
+\section{Considerații generale de arhitectură}
+
+Perifericul este împărțit în module independente, fiecare având roluri bine definite:
+\begin{itemize}
+    \item recepția fluxului SPI și transformarea lui în octeți,
+    \item interpretarea instrucțiunilor și a adreselor,
+    \item menținerea configurației în registre,
+    \item generarea bazei de timp (contor și prescaler),
+    \item generarea semnalului PWM propriu-zis.
+\end{itemize}
+
+Un element important al arhitecturii este folosirea unui singur ceas intern (\texttt{clk}) pentru întreaga logică. Semnalele externe provenite de la SPI Master sunt preluate, eșantionate și sincronizate înainte de a fi folosite, astfel încât funcționarea sistemului să fie stabilă. Semnalul de reset hardware (\texttt{rst\_n}) readuce toate modulele într-o stare bine definită (registre resetate), ceea ce oferă o pornire controlată și repetabilă.
+
+\section{Modulul \texttt{spi\_bridge}}
+
+Acest modul convertește fluxul serial de intrare într-un format paralel și gestionează comunicarea bidirecțională pe linia de date.
+
+\subsection{Sincronizarea și detecția fronturilor}
+
+Deoarece semnalul SPI \texttt{sclk} nu este generat în același domeniu de ceas cu restul perifericului, s-a introdus un registru \texttt{sclk\_prev} care memorează valoarea lui la ciclul anterior. Astfel se pot identifica clar tranzițiile de tip urcare sau coborâre, iar logica de recepție și transmisie poate fi comandată corect în funcție de frontul detectat.
+
+\subsection{Gestionarea semnalului CS\_n}
+
+Când \texttt{cs\_n} devine activ (trece în nivel înalt), contorul intern de biți este resetat. În acest fel se evită acumularea unui byte incomplet, iar următoarea transmisie începe întotdeauna de la primul bit (MSB), păstrând alinierea dintre master și periferic.
+
+\subsection{Transmiterea datelor pe MISO}
+
+Valoarea transmisă pe MISO este selectată direct din vectorul \texttt{data\_out}, folosind expresia \texttt{data\_out[7 - bit\_cnt]}. Această alegere permite folosirea imediată a datelor puse la dispoziție de modulul de registre, fără întârziere suplimentară.
+
+\subsection{Generarea semnalului \texttt{byte\_sync}}
+
+Semnalul \texttt{byte\_sync} este activat pentru un singur ciclu de ceas atunci când a fost recepționat un octet complet. Astfel, modulul decodor poate determina exact momentul în care datele sunt valide.
+
+\section{Modulul \texttt{instr\_dcd}}
+
+Decodorul de instrucțiuni transformă fluxul de octeți în comenzi de citire sau scriere pentru registre.
+
+\subsection{Arhitectura FSM (Setup și Data)}
+
+FSM-ul este alcătuit din două stări:
+\begin{itemize}
+    \item \textbf{Setup} — interpretează primul octet, stabilește tipul operației (citire sau scriere) și adresa de bază;
+    \item \textbf{Data} — procesează efectiv byte-ul de date (scriere) sau finalizează citirea.
+\end{itemize}
+
+Împărțirea în aceste două etape previne suprapunerea operațiilor și garantează că semnalele \texttt{read} și \texttt{write} nu sunt niciodată active simultan.
+
+\subsection{Calculul adresei și selecția LSB/MSB}
+
+Pentru registrele pe 16 biți, adresa este ajustată automat cu un offset în funcție de bitul de selecție primit în instrucțiune. Astfel se poate accesa separat octetul inferior (LSB) sau superior (MSB) al aceluiași registru, fără logică suplimentară în celelalte module.
+
+\section{Modulul \texttt{regs}}
+
+Acest modul centralizează toate valorile configurabile ale perifericului și definește harta de registre.
+
+\subsection{Mecanismul \texttt{COUNTER\_RESET}}
+
+Registrul \texttt{COUNTER\_RESET} funcționează sub formă de impuls. Orice scriere activează semnalul pentru un singur ciclu de ceas, după care acesta se resetează automat. Acest comportament permite resetarea controlată a contorului, fără riscul ca acesta să rămână blocat în starea de reset.
+
+\subsection{Citirea directă a \texttt{COUNTER\_VAL}}
+
+Valoarea contorului nu este memorată local. Modulul \texttt{regs} transmite direct către utilizator valoarea curentă primită din modulul \texttt{counter}. În acest fel, software-ul vede întotdeauna valoarea reală a contorului în momentul citirii.
+
+\subsection{Adrese invalide}
+
+La adrese din afara hărții definite, citirea produce valoarea 0, iar scrierea este ignorată. Această regulă previne modificări accidentale și păstrează un comportament previzibil.
+
+\section{Modulul \texttt{counter}}
+
+\subsection{Prescalerul}
+
+Prescalerul este implementat cu o valoare limită calculată ca \((1 \ll prescale)\). Mecanismul permite ajustarea vitezei de incrementare sau decrementare a contorului în pași exponențiali, conform cerințelor perifericului.
+
+\subsection{Ciclicitatea contorului}
+
+Contorul funcționează într-un ciclu repetitiv:
+\begin{itemize}
+    \item la incrementare, dacă valoarea ajunge la \texttt{period}, acesta revine la 0;
+    \item la decrementare, dacă ajunge la 0, acesta revine la \texttt{period}.
+\end{itemize}
+
+\section{Modulul \texttt{pwm\_gen}}
+
+\subsection{Logica PWM}
+
+Generatorul PWM folosește doar logică combinațională. Ieșirea este determinată pe baza comparației dintre \texttt{count\_val} și valorile \texttt{compare1} și \texttt{compare2}. Pentru că toate aceste semnale provin din logică sincronă, ieșirea PWM nu prezintă tranziții nedorite.
+
+\subsection{Modurile de funcționare}
+
+\textbf{Mod aliniat:}
+Semnalul PWM își schimbă starea la atingerea valorii \texttt{compare1}. Inițial, nivelul depinde de modul de aliniere (stânga sau dreapta).
+
+\textbf{Mod nealiniat:}
+Semnalul este activ doar în intervalul:
+\[
+\text{compare1} \le \text{count\_val} < \text{compare2}.
+\]
+
+\section{Concluzii}
+
+Implementarea respectă toate cerințele funcționale ale perifericului. Structura modulară, sincronizarea corectă a semnalelor externe și separarea clară a funcțiilor între module conduc la un periferic robust și ușor de integrat în sisteme mai complexe.
+
+\end{document}
