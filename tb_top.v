@@ -3,7 +3,7 @@
 
 module tb_top_system;
 
-    reg  clk;         
+    reg  clk;        
     reg  rst_n;
 
     reg  tb_mosi;   
@@ -49,21 +49,9 @@ module tb_top_system;
     end
 
     initial begin
-  $dumpfile("waves.vcd");
-  $dumpvars(0, tb_top_system);
-  
-  // -------------- DE URMĂRIT -----------------
-  // registrele interne și semnale cheie
-  $dumpvars(0, tb_top_system.dut.i_regs.r_period);
-  $dumpvars(0, tb_top_system.dut.i_regs.r_compare1);
-  $dumpvars(0, tb_top_system.dut.i_regs.r_en);
-  $dumpvars(0, tb_top_system.dut.i_regs.r_pwm_en);
-  $dumpvars(0, tb_top_system.dut.i_regs.r_functions);
-  $dumpvars(0, tb_top_system.dut.i_regs.r_prescale);
-  $dumpvars(0, tb_top_system.dut.i_counter.count_val_r);
-  $dumpvars(0, tb_top_system.dut.i_counter.prescale_cnt);
-  $dumpvars(0, tb_top_system.dut.i_pwm_gen.pwm_out_r);
-end
+        $dumpfile("waves.vcd");
+        $dumpvars(0, tb_top_system);
+    end
 
     task apply_reset;
         begin
