@@ -1,2 +1,32 @@
-temp/
+# Executabilul generat de iverilog (definit in Makefile)
+sim_top
+
+# Forme de undă generate (mari, binare/text)
 *.vcd
+waves.vcd
+
+# Alte posibile extensii Icarus Verilog
+*.vvp
+*.out
+*.log
+
+# ---------------------------------
+# Directoare Temporare
+# ---------------------------------
+temp/
+tmp/
+
+# ---------------------------------
+# Fisiere de Sistem si Editor
+# ---------------------------------
+# Mac
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# VS Code / IntelliJ / Editors
+.vscode/
+.idea/
+*.swp
+*~

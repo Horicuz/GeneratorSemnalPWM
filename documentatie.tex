@@ -3,12 +3,16 @@
 \usepackage[utf8]{inputenc}
 \usepackage[romanian]{babel}
 \usepackage{amsmath}
+\usepackage{float}
 \usepackage{amssymb}
+\usepackage{graphicx}
 \usepackage{geometry}
 \geometry{margin=2.5cm}
 
 \title{Documentație tehnică – Implementare periferic PWM cu interfață SPI}
-\author{Echipa: \_\_\_}
+\author{
+    Gatej Ștefan \and Potop Horia
+}
 \date{\today}
 
 \begin{document}
@@ -16,108 +20,370 @@
 
 \section{Introducere}
 
-Acest document descrie implementarea perifericului PWM, cu accent pe deciziile funcționale și arhitecturale din cod. Pentru fiecare modul sunt prezentate motivele care au stat la baza implementării, modul în care acestea respectă cerințele funcționale și felul în care componentele interacționează între ele.
+Acest proiect implementează un periferic hardware dedicat generării semnalelor PWM (Pulse Width Modulation), similar modulelor timer avansate din microcontrolerele moderne. Perifericul este proiectat pentru a fi integrat într-un SoC (System on Chip) sau într-o arhitectură digitală FPGA, comunicând cu un master extern prin intermediul unei interfețe SPI Slave și expunând funcționalități configurabile prin registre mapate în memorie.
+
+PWM este un mecanism esențial în controlul sistemelor electronice: de la ajustarea intensității luminoase a LED-urilor și controlul turației motoarelor, până la generarea semnalelor pentru servomotoare. Pentru a răspunde acestor cerințe, perifericul implementat oferă o flexibilitate ridicată, permițând configurarea perioadei semnalului, selectarea modului de aliniere (Left, Right sau Range), setarea pragurilor de comparație și utilizarea unui prescaler pentru divizarea frecvenței de bază.
+
+Documentația prezentată descrie structura internă a perifericului, protocolul de comunicare și soluțiile arhitecturale adoptate pentru a asigura robustețea semnalelor și corectitudinea transferului de date între domenii de ceas asincrone.
 
 \section{Considerații generale de arhitectură}
 
-Perifericul este împărțit în module independente, fiecare având roluri bine definite:
+Arhitectura perifericului este modulară și respectă principiile proiectării sincrone, cu excepția interfeței de intrare care gestionează domenii de ceas multiple. Perifericul este divizat în cinci componente principale, interconectate conform diagramei bloc a sistemului:
+
 \begin{itemize}
-    \item recepția fluxului SPI și transformarea lui în octeți,
-    \item interpretarea instrucțiunilor și a adreselor,
-    \item menținerea configurației în registre,
-    \item generarea bazei de timp (contor și prescaler),
-    \item generarea semnalului PWM propriu-zis.
+    \item \textbf{Interfața SPI (\texttt{spi\_bridge.v})} – Modulul de interfațare cu lumea externă. Acesta implementează un mecanism robust de \textbf{Clock Domain Crossing (CDC)} utilizând un buffer de date stabilizat și un semnal de tip \textit{Toggle Flag}. Această abordare garantează că datele recepționate pe ceasul serial (\texttt{sclk}) sunt transferate corect și fără pierderi în domeniul de ceas al sistemului (\texttt{clk}), indiferent de viteza semnalului \texttt{CS\_N}.
+    
+    \item \textbf{Decodorul de instrucțiuni (\texttt{instr\_dcd.v})} – Implementează o mașină de stări finită (FSM) optimizată care interpretează pachetele de date. Modulul detectează automat secvențele de comandă (scriere/citire) și generează semnalele de control precise (impulsuri de un ciclu de ceas) pentru accesul la bancul de registre.
+    
+    \item \textbf{Blocul de registre (\texttt{regs.v})} – Reprezintă memoria de configurare a sistemului. Gestionează registre de 8 și 16 biți (separate în octeți High/Low), stocând parametrii precum perioada, factorul de umplere, modurile de funcționare și prescaler-ul. De asemenea, oferă acces de citire la valoarea curentă a numărătorului.
+    
+    \item \textbf{Contorul (\texttt{counter.v})} – Baza de timp a sistemului. Include un \textit{prescaler liniar} care divide frecvența de intrare și un numărător principal pe 16 biți configurabil în modurile \texttt{UP} sau \texttt{DOWN}. Logica asigură numărarea corectă a intervalului $[0, \text{Period}]$, garantând o rezoluție temporală precisă.
+    
+    \item \textbf{Generatorul PWM (\texttt{pwm\_gen.v})} – Responsabil de formarea semnalului de ieșire. Logica acestui modul este implementată \textbf{pur combinațional} (\texttt{always @*}) pentru a asigura un răspuns instantaneu la schimbarea valorii contorului și pentru a elimina latența de un ciclu de ceas, satisfăcând astfel cerințele stricte de timing ale testelor de verificare. Modulul suportă modurile: \textit{Left Aligned}, \textit{Right Aligned} și \textit{Range (Center)}.
 \end{itemize}
 
-Un element important al arhitecturii este folosirea unui singur ceas intern (\texttt{clk}) pentru întreaga logică. Semnalele externe provenite de la SPI Master sunt preluate, eșantionate și sincronizate înainte de a fi folosite, astfel încât funcționarea sistemului să fie stabilă. Semnalul de reset hardware (\texttt{rst\_n}) readuce toate modulele într-o stare bine definită (registre resetate), ceea ce oferă o pornire controlată și repetabilă.
-
+Un aspect critic al arhitecturii este gestionarea domeniilor de ceas. Semnalele provenite din interfața SPI (\texttt{sclk}, \texttt{mosi}, \texttt{cs\_n}) sunt asincrone față de ceasul sistemului (\texttt{clk}). Pentru a preveni metastabilitatea și erorile de tip \textit{bus skew}, datele sunt capturate într-un buffer stabil pe domeniul SPI, iar validarea lor către sistem se face prin sincronizarea unui singur bit de control (\textit{toggle bit}) prin bistabile în cascadă.
 \section{Modulul \texttt{spi\_bridge}}
 
-Acest modul convertește fluxul serial de intrare într-un format paralel și gestionează comunicarea bidirecțională pe linia de date.
+Modulul \texttt{spi\_bridge} reprezintă interfața critică dintre lumea externă (Masterul SPI) și logica internă a perifericului. Deoarece semnalele SPI (\texttt{sclk}, \texttt{mosi}, \texttt{cs\_n}) sunt asincrone față de ceasul sistemului (\texttt{clk}), modulul este proiectat ca un \textbf{Clock Domain Crossing (CDC) Bridge}.
 
-\subsection{Sincronizarea și detecția fronturilor}
+Arhitectura utilizează o schemă robustă bazată pe un \textbf{Buffer de Date} și un \textbf{Toggle Flag}, garantând integritatea datelor chiar și în cazul unor discrepanțe mari de frecvență între cele două domenii de ceas.
 
-Deoarece semnalul SPI \texttt{sclk} nu este generat în același domeniu de ceas cu restul perifericului, s-a introdus un registru \texttt{sclk\_prev} care memorează valoarea lui la ciclul anterior. Astfel se pot identifica clar tranzițiile de tip urcare sau coborâre, iar logica de recepție și transmisie poate fi comandată corect în funcție de frontul detectat.
+\subsection{Domeniul SPI (sincronizat cu \texttt{sclk})}
 
-\subsection{Gestionarea semnalului CS\_n}
+Această parte a logicii este responsabilă de recepția serială a datelor. Funcționează exclusiv pe fronturile semnalului \texttt{sclk}.
 
-Când \texttt{cs\_n} devine activ (trece în nivel înalt), contorul intern de biți este resetat. În acest fel se evită acumularea unui byte incomplet, iar următoarea transmisie începe întotdeauna de la primul bit (MSB), păstrând alinierea dintre master și periferic.
+\begin{itemize}
+    \item \textbf{Recepția Datelor (MOSI):} Pe fiecare front crescător al \texttt{sclk}, bitul de pe linia MOSI este introdus într-un registru de deplasare (\texttt{shift\_reg}).
+    \item \textbf{Bufferarea (Captured Data):} În momentul în care s-au recepționat complet 8 biți, conținutul registrului de deplasare este copiat imediat într-un registru tampon numit \texttt{captured\_data}. Acest buffer este esențial deoarece menține datele stabile pentru a fi citite ulterior de ceasul sistemului, protejându-le de modificări ulterioare ale liniei MOSI sau de resetarea \texttt{cs\_n}.
+    \item \textbf{Semnalizarea prin Toggle Flag:} Simultan cu salvarea datelor în buffer, un semnal de control de un singur bit, numit \texttt{toggle\_flag}, își inversează starea logică ($0 \rightarrow 1$ sau $1 \rightarrow 0$). Această tranziție semnalează existența unui nou pachet de date valid.
+\end{itemize}
 
-\subsection{Transmiterea datelor pe MISO}
+\subsection{Domeniul Sistem (sincronizat cu \texttt{clk})}
 
-Valoarea transmisă pe MISO este selectată direct din vectorul \texttt{data\_out}, folosind expresia \texttt{data\_out[7 - bit\_cnt]}. Această alegere permite folosirea imediată a datelor puse la dispoziție de modulul de registre, fără întârziere suplimentară.
+Partea de sistem monitorizează semnalul \texttt{toggle\_flag} pentru a detecta noile date. Deoarece acest semnal provine dintr-un domeniu asincron, el trece printr-un proces strict de sincronizare:
 
-\subsection{Generarea semnalului \texttt{byte\_sync}}
+\begin{enumerate}
+    \item \textbf{Sincronizarea (Double-Flop):} Semnalul \texttt{toggle\_flag} este trecut prin două etaje de bistabile (\texttt{toggle\_sync1}, \texttt{toggle\_sync2}) pentru a elimina riscul de metastabilitate.
+    \item \textbf{Detectarea Schimbării (Edge Detection):} Logica compară starea curentă sincronizată (\texttt{toggle\_sync2}) cu starea din ciclul anterior (\texttt{toggle\_prev}). Orice diferență între cele două indică faptul că \texttt{toggle\_flag} și-a schimbat starea în domeniul SPI, deci a sosit un nou octet.
+    \item \textbf{Generarea \texttt{byte\_sync}:} La detectarea schimbării, se generează un impuls de un singur ciclu (\texttt{byte\_sync}) și se copiază conținutul din \texttt{captured\_data} în ieșirea \texttt{data\_in}.
+\end{enumerate}
 
-Semnalul \texttt{byte\_sync} este activat pentru un singur ciclu de ceas atunci când a fost recepționat un octet complet. Astfel, modulul decodor poate determina exact momentul în care datele sunt valide.
+\subsection{Gestionarea semnalului \texttt{CS\_n}}
+
+Un aspect de design important este comportamentul la dezactivarea \texttt{CS\_n} (ridicare la 1 log). Modulul resetează doar contorul de biți (\texttt{bit\_cnt}), dar \textbf{păstrează intacte} registrele \texttt{captured\_data} și \texttt{toggle\_flag}.
+
+Această persistență (comportament "sticky") asigură că, chiar dacă Masterul SPI încheie tranzacția foarte rapid (ridică \texttt{CS\_n} imediat după ultimul bit), datele rămân valide suficient timp pentru ca logica lentă a sistemului să le preia corect.
+
+\subsection{Transmiterea datelor (MISO)}
+
+Pentru a respecta standardul SPI Mod 0 (CPOL=0, CPHA=0), datele sunt transmise pe linia MISO pe frontul descrescător al \texttt{sclk}. Implementarea selectează bitul corespunzător din octetul de ieșire (\texttt{data\_out}) în funcție de contorul curent, asigurând transmisia MSB-first:
+\[
+r\_miso \leftarrow data\_out[\,7 - bit\_cnt\,]
+\]
+La activarea inițială a \texttt{CS\_n} (front descrescător), bitul 7 (MSB) este plasat imediat pe linie.
+
+\subsection{Concluzii privind implementarea}
+
+Soluția "Toggle Flag + Buffer" oferă avantaje majore față de abordările clasice bazate pe contoare sau pulsuri simple:
+\begin{itemize}
+    \item \textbf{Siguranță Hardware:} Transferul inter-domenii se bazează pe un singur bit, eliminând erorile de tip \textit{Bus Skew} asociate transferului de contoare binare.
+    \item \textbf{Imunitate la Timing:} Utilizarea buffer-ului dedicat decuplează momentul recepției de momentul procesării, permițând funcționarea corectă indiferent de raportul de frecvență dintre \texttt{sclk} și \texttt{clk}.
+\end{itemize}
+
+
+
 
 \section{Modulul \texttt{instr\_dcd}}
 
-Decodorul de instrucțiuni transformă fluxul de octeți în comenzi de citire sau scriere pentru registre.
+Modulul \texttt{instr\_dcd} (Instruction Decoder) funcționează ca unitatea de control a perifericului, fiind responsabil de interpretarea pachetelor de date primite de la interfața SPI și de orchestrarea accesului la bancul de registre. Acesta transformă fluxul serial de octeți în operații atomice de \textbf{citire} sau \textbf{scriere} pe magistrala internă paralelă.
 
-\subsection{Arhitectura FSM (Setup și Data)}
+Funcționarea modulului este complet sincronă cu ceasul sistemului (\texttt{clk}) și este structurată sub forma unei mașini de stări finite (FSM) cu două stări principale. Tranzițiile între stări sunt condiționate de semnalul \texttt{byte\_sync}, care indică disponibilitatea unui nou octet valid de la \texttt{spi\_bridge}.
 
-FSM-ul este alcătuit din două stări:
+\subsection{Arhitectura FSM}
+
+Mașina de stări ciclează între așteptarea unei comenzi și procesarea datelor aferente, asigurând o sincronizare strictă a perechilor Comandă-Date:
+
 \begin{itemize}
-    \item \textbf{Setup} — interpretează primul octet, stabilește tipul operației (citire sau scriere) și adresa de bază;
-    \item \textbf{Data} — procesează efectiv byte-ul de date (scriere) sau finalizează citirea.
+    \item \textbf{Starea \texttt{S\_CMD} (Recepție Comandă):}
+    În această stare inițială, modulul așteaptă primul octet al tranzacției. Odată primit (semnalizat prin \texttt{byte\_sync}), acesta este decodificat astfel:
+    \begin{itemize}
+        \item \textbf{Bitul 7 (MSB):} Este interpretat ca bitul \texttt{RW}. Valoarea `1` indică o operație de \textbf{Scriere}, iar `0` o operație de \textbf{Citire}. Această valoare este memorată intern în registrul \texttt{rw\_bit}.
+        \item \textbf{Biții 5:0:} Reprezintă adresa registrului țintă. Aceasta este salvată în registrul \texttt{r\_addr} și menținută stabilă pentru ciclul următor.
+    \end{itemize}
+    După procesare, FSM-ul trece automat în starea \texttt{S\_DATA}.
+
+    \item \textbf{Starea \texttt{S\_DATA} (Transfer Date):}
+    În această stare, modulul așteaptă al doilea octet. La primirea pulsului \texttt{byte\_sync}, acțiunea depinde de direcția stabilită anterior:
+    \begin{itemize}
+        \item \textbf{Scriere (\texttt{rw\_bit} = 1):} Octetul primit (\texttt{data\_in}) este plasat pe magistrala \texttt{data\_write}, iar semnalul de control \texttt{write} este activat pentru un singur ciclu de ceas.
+        \item \textbf{Citire (\texttt{rw\_bit} = 0):} Datele prezente la intrarea \texttt{data\_read} (furnizate de blocul de registre la adresa selectată) sunt capturate în registrul de ieșire \texttt{data\_out}, pentru a fi transmise înapoi prin SPI. Semnalul \texttt{read} este activat opțional pentru monitorizare.
+    \end{itemize}
+    Imediat după execuție, FSM-ul revine în starea \texttt{S\_CMD} pentru a aștepta o nouă tranzacție.
 \end{itemize}
 
-Împărțirea în aceste două etape previne suprapunerea operațiilor și garantează că semnalele \texttt{read} și \texttt{write} nu sunt niciodată active simultan.
 
-\subsection{Calculul adresei și selecția LSB/MSB}
+\subsection{Sincronizarea semnalelor de control}
 
-Pentru registrele pe 16 biți, adresa este ajustată automat cu un offset în funcție de bitul de selecție primit în instrucțiune. Astfel se poate accesa separat octetul inferior (LSB) sau superior (MSB) al aceluiași registru, fără logică suplimentară în celelalte module.
+Pentru a asigura integritatea datelor și a evita scrierile multiple eronate, semnalele critice \texttt{read} și \texttt{write} sunt generate sub formă de impulsuri ("strobes") cu durata exactă de un ciclu de ceas. 
+
+Implementarea utilizează registre interne pentru toate ieșirile (\texttt{r\_addr}, \texttt{r\_data\_write}, \texttt{r\_data\_out}), ceea ce garantează că semnalele sunt perfect aliniate cu frontul ceasului și lipsite de glitch-uri combinaționale, o caracteristică esențială pentru stabilitatea sistemului.
 
 \section{Modulul \texttt{regs}}
 
-Acest modul centralizează toate valorile configurabile ale perifericului și definește harta de registre.
+Modulul \texttt{regs} (Register File) constituie harta de memorie a perifericului, fiind punctul central de configurare și monitorizare. Acesta stochează parametrii de funcționare (perioadă, factor de umplere, prescaler) și expune starea curentă a sistemului (valoarea contorului) către interfața SPI.
 
-\subsection{Mecanismul \texttt{COUNTER\_RESET}}
+Arhitectura internă separă strict logica de \textbf{scriere sincronă} de cea de \textbf{citire combinațională}, asigurând stabilitatea datelor stocate și accesul rapid la informație.
 
-Registrul \texttt{COUNTER\_RESET} funcționează sub formă de impuls. Orice scriere activează semnalul pentru un singur ciclu de ceas, după care acesta se resetează automat. Acest comportament permite resetarea controlată a contorului, fără riscul ca acesta să rămână blocat în starea de reset.
+\subsection{Organizarea memoriei și accesul la registre}
 
-\subsection{Citirea directă a \texttt{COUNTER\_VAL}}
+Spațiul de adrese este organizat pe 8 biți, fiecare registru având o adresă unică de 6 biți (0x00 - 0x3F). Deoarece magistrala de date este de 8 biți, registrele de 16 biți (precum \texttt{period}, \texttt{compare1}, \texttt{compare2}) sunt mapate pe două adrese consecutive:
+\begin{itemize}
+    \item Adresa $N$: Octetul inferior (LSB - Least Significant Byte).
+    \item Adresa $N+1$: Octetul superior (MSB - Most Significant Byte).
+\end{itemize}
+Această abordare simplifică logica de decodare și permite actualizarea granulară a parametrilor.
 
-Valoarea contorului nu este memorată local. Modulul \texttt{regs} transmite direct către utilizator valoarea curentă primită din modulul \texttt{counter}. În acest fel, software-ul vede întotdeauna valoarea reală a contorului în momentul citirii.
+\subsection{Logica de Scriere (Synchronous Write)}
 
-\subsection{Adrese invalide}
+Scrierea în registre este o operație secvențială, declanșată de semnalul \texttt{write} provenit de la decodor. Pe frontul crescător al ceasului:
+\begin{enumerate}
+    \item Se verifică semnalul de Reset (\texttt{rst\_n}). Dacă este activ, toate registrele sunt inițializate la 0.
+    \item Dacă \texttt{write} este activ, valoarea de pe magistrala \texttt{data\_write} este încărcată în registrul selectat de \texttt{addr}.
+\end{enumerate}
 
-La adrese din afara hărții definite, citirea produce valoarea 0, iar scrierea este ignorată. Această regulă previne modificări accidentale și păstrează un comportament previzibil.
+Un caz particular este registrul \texttt{COUNTER\_RESET} (adresa 0x07). Acesta implementează un mecanism de tip \textbf{Auto-Clear (Pulse Generation)}:
+\begin{itemize}
+    \item La scrierea valorii '1', semnalul intern \texttt{r\_count\_reset} devine activ pentru ciclul curent.
+    \item Imediat în următorul ciclu (sau dacă nu există scriere), acesta revine automat la '0'.
+\end{itemize}
+Acest comportament asigură generarea unui impuls precis de un singur ciclu de ceas, necesar pentru resetarea sincronă a modulului \texttt{counter}, indiferent de durata comenzii SPI.
+
+\subsection{Logica de Citire (Combinational Read)}
+
+Citirea este implementată printr-un multiplexor combinațional vast (\texttt{always @*}). Această arhitectură oferă \textbf{latență zero}: în momentul în care decodorul aplică o adresă validă și semnalul \texttt{read}, datele sunt disponibile instantaneu la ieșirea \texttt{data\_read}.
+
+Sursele de date sunt de două tipuri:
+\begin{itemize}
+    \item \textbf{Registre de Configurare (R/W):} Valoarea este citită direct din bistabilele interne (ex: \texttt{r\_period}, \texttt{r\_prescale}).
+    \item \textbf{Semnale Externe (Read-Only):} Pentru adresele 0x08 și 0x09, modulul nu citește un registru intern, ci rutează direct valoarea curentă a semnalului \texttt{counter\_val} primit de la modulul Contor. Astfel, software-ul are acces în timp real la starea numărătorului.
+\end{itemize}
+
+Pentru orice adresă nedefinită sau rezervată (inclusiv registrul Write-Only de Reset), logica de citire returnează implicit valoarea \texttt{0x00}, prevenind stările nedefinite pe magistrală.
+
 
 \section{Modulul \texttt{counter}}
 
-\subsection{Prescalerul}
+Modulul \texttt{counter} reprezintă baza de timp a perifericului, fiind responsabil pentru generarea secvențelor de numărare (\texttt{count\_val}) care determină frecvența și rezoluția semnalului PWM. Implementarea este complet sincronă și include un divizor de frecvență configurabil (prescaler).
 
-Prescalerul este implementat cu o valoare limită calculată ca \((1 \ll prescale)\). Mecanismul permite ajustarea vitezei de incrementare sau decrementare a contorului în pași exponențiali, conform cerințelor perifericului.
+\subsection{Structura internă}
 
-\subsection{Ciclicitatea contorului}
-
-Contorul funcționează într-un ciclu repetitiv:
+Funcționarea modulului se bazează pe două registre interne de stare, actualizate pe frontul crescător al ceasului sistemului (\texttt{clk}):
 \begin{itemize}
-    \item la incrementare, dacă valoarea ajunge la \texttt{period}, acesta revine la 0;
-    \item la decrementare, dacă ajunge la 0, acesta revine la \texttt{period}.
+    \item \texttt{count\_val\_r}: Contorul principal pe 16 biți. Valoarea sa evoluează ciclic între $0$ și valoarea programată în registrul \texttt{period}.
+    \item \texttt{prescale\_cnt}: Un contor secundar pe 8 biți, utilizat pentru divizarea frecvenței de bază.
 \end{itemize}
+Valoarea curentă a contorului principal este expusă în timp real către magistrala internă prin ieșirea \texttt{count\_val}.
+
+\subsection{Mecanismul de Prescalare (Liniar)}
+
+Divizarea frecvenței este realizată printr-un mecanism de tip "Tick Generator". Registrul \texttt{prescale\_cnt} se incrementează la fiecare ciclu de ceas. Doar atunci când acesta atinge valoarea prag definită de intrarea \texttt{prescale}, se generează un semnal intern de validare ("tick").
+
+La apariția acestui eveniment:
+\begin{enumerate}
+    \item \texttt{prescale\_cnt} este resetat automat la 0.
+    \item Contorul principal \texttt{count\_val\_r} execută un pas de incrementare sau decrementare.
+\end{enumerate}
+Astfel, frecvența de actualizare a contorului principal devine:
+\[ f_{counter} = \frac{f_{clk}}{\text{prescale} + 1} \]
+
+\subsection{Logica de Numărare și Modurile de Operare}
+
+Direcția de numărare este dictată de semnalul de control \texttt{upnotdown}. Logica tratează explicit condițiile de limită (rollover) pentru a asigura continuitatea formei de undă:
+
+\begin{itemize}
+    \item \textbf{Modul UP (\texttt{upnotdown} = 1):} Contorul incrementează de la 0. La atingerea valorii \texttt{period}, în următorul ciclu valid, contorul revine la 0.
+    \item \textbf{Modul DOWN (\texttt{upnotdown} = 0):} Contorul decrementează. Când atinge valoarea 0, în următorul ciclu valid, se reîncarcă cu valoarea \texttt{period}.
+\end{itemize}
+
+\subsection{Control și Resetare}
+
+Modulul implementează o ierarhie strictă a semnalelor de control:
+\begin{enumerate}
+    \item \textbf{Reset Asincron (\texttt{rst\_n}):} Are cea mai mare prioritate. Inițializează hardware toate registrele la 0.
+    \item \textbf{Reset Sincron (\texttt{count\_reset}):} Activarea acestui semnal forțează aducerea imediată a contoarelor la 0 pe frontul de ceas, permițând resincronizarea fazei PWM din software.
+    \item \textbf{Enable (\texttt{en}):} Dacă acest semnal este inactiv (0), starea internă a modulului este "înghețată" (hold). Atât contorul principal cât și prescalerul își păstrează valorile curente, permițând reluarea operației exact din punctul opririi.
+\end{enumerate}
+
 
 \section{Modulul \texttt{pwm\_gen}}
 
-\subsection{Logica PWM}
+Modulul \texttt{pwm\_gen} este blocul final al lanțului de procesare, responsabil de generarea semnalului PWM pe baza valorii curente a contorului (\texttt{count\_val}) și a registrelor de comparație. 
 
-Generatorul PWM folosește doar logică combinațională. Ieșirea este determinată pe baza comparației dintre \texttt{count\_val} și valorile \texttt{compare1} și \texttt{compare2}. Pentru că toate aceste semnale provin din logică sincronă, ieșirea PWM nu prezintă tranziții nedorite.
+Spre deosebire de modulele anterioare, arhitectura aleasă pentru acest modul este \textbf{pur combinațională} (\texttt{always @*}). Această decizie de proiectare a fost critică pentru a asigura \textbf{latență zero} între schimbarea valorii contorului și actualizarea ieșirii, garantând sincronizarea perfectă cerută de testele stricte de timing.
 
-\subsection{Modurile de funcționare}
+\subsection{Logica de Control și Selecția Modului}
 
-\textbf{Mod aliniat:}
-Semnalul PWM își schimbă starea la atingerea valorii \texttt{compare1}. Inițial, nivelul depinde de modul de aliniere (stânga sau dreapta).
-
-\textbf{Mod nealiniat:}
-Semnalul este activ doar în intervalul:
+Funcționarea modulului este dictată de vectorul \texttt{functions}, din care se extrag biții de mod:
 \[
-\text{compare1} \le \text{count\_val} < \text{compare2}.
+\text{mode\_sel} = functions[1:0]
 \]
+Pe baza acestora, comparatorul combinațional determină starea ieșirii \texttt{pwm\_out} în timp real, comparând continuu \texttt{count\_val} cu pragurile \texttt{compare1} și \texttt{compare2}.
+
+\subsection{Modurile de Generare Implementate}
+
+\begin{enumerate}
+    \item \textbf{Modul Aliniat la Stânga (Left Aligned):}
+    Semnalul este activ la începutul perioadei. Logica este:
+    \[ pwm\_out = (count\_val \le compare1) \]
+    
+    \item \textbf{Modul Aliniat la Dreapta (Right Aligned):}
+    Semnalul devine activ spre finalul perioadei. Logica este:
+    \[ pwm\_out = (count\_val \ge compare1) \]
+    
+    \item \textbf{Modul Nealiniat (Range / Center):}
+    Semnalul este activ într-o fereastră definită de cele două praguri. Logica este:
+    \[ pwm\_out = (count\_val \ge compare1) \land (count\_val < compare2) \]
+\end{enumerate}
+
+\subsection{Condiții de siguranță și cazuri limită}
+
+Logica combinațională include o ierarhie de protecții care suprascriu generarea normală a semnalului:
+\begin{itemize}
+    \item \textbf{Global Disable:} Dacă \texttt{pwm\_en} este 0 sau \texttt{rst\_n} este activ, ieșirea este forțată asincron la nivelul logic \textbf{0}.
+    \item \textbf{Safety Checks:} Ieșirea este forțată la 0 dacă pragul \texttt{compare1} este 0 sau dacă pragurile sunt egale (\texttt{compare1 == compare2}). Aceasta previne generarea unor impulsuri parazite (glitch-uri) în configurații invalide.
+\end{itemize}
+
+\subsection{Exemple de funcționare în simulare}
+
+În această secțiune sunt prezentate trei capturi relevante, fiecare ilustrând un mod distinct de operare.  
+Imaginile sunt longitudinale (wide) pentru a surprinde mai multe perioade succesive ale semnalului PWM.
+
+\clearpage
+
+\subsubsection*{PWM aliniat la stânga}
+
+În acest mod, \texttt{FUNCTIONS[1] = 0} (aliniat), iar \texttt{FUNCTIONS[0] = 0}, ceea ce determină ca semnalul PWM să înceapă în nivelul logic \texttt{1}.
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{AliniereStanga.jpeg}
+    \caption{Semnal PWM generat în mod aliniat la stânga.}
+\end{figure}
+
+\subsubsection*{PWM aliniat la dreapta}
+
+În acest exemplu, \texttt{FUNCTIONS[1] = 0}, dar \texttt{FUNCTIONS[0] = 1}, ceea ce deplasează frontul activ către finalul perioadei.
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{AliniereDreapta.jpeg}
+    \caption{Semnal PWM generat în mod aliniat la dreapta.}
+\end{figure}
+
+\subsubsection*{PWM nealiniat (window mode)}
+
+Când \texttt{FUNCTIONS[1] = 1}, semnalul PWM devine activ doar în intervalul:
+\[
+\text{COMPARE1} \le \text{count\_val} < \text{COMPARE2}.
+\]
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Nealiniere.jpeg}
+    \caption{Semnal PWM generat în mod nealiniat.}
+\end{figure}
+
+
+\section{Modulul \texttt{top}}
+
+Modulul \texttt{top} reprezintă nivelul ierarhic superior al proiectului ("Top Level Entity"). Rolul său este exclusiv structural: acesta nu conține logică proprie de procesare, ci este responsabil de instanțierea și interconectarea corectă a celor cinci sub-module funcționale: \texttt{spi\_bridge}, \texttt{instr\_dcd}, \texttt{regs}, \texttt{counter} și \texttt{pwm\_gen}.
+
+De asemenea, acest modul realizează maparea porturilor fizice ale perifericului (Clock, Reset, SPI, PWM Out) la semnalele interne ale sistemului.
+
+\subsection{Modificări aduse scheletului inițial}
+
+Deși specificația inițială recomanda păstrarea fișierului \texttt{top.v} original, analiza funcțională a acestuia a relevat erori critice de conectivitate care făceau imposibilă funcționarea sistemului. Prin urmare, a fost necesară rescrierea completă a acestui modul pentru a asigura integritatea semnalelor.
+
+Principalele corecții implementate sunt:
+
+\begin{itemize}
+    \item \textbf{Conectarea semnalului \texttt{byte\_sync}:} În versiunea originală, portul \texttt{byte\_sync} al modulului \texttt{spi\_bridge} și intrarea corespunzătoare din \texttt{instr\_dcd} erau lăsate neconectate (floating). Acest lucru bloca complet mașina de stări a decodorului, care nu primea niciodată notificarea că un octet a fost recepționat. În noua versiune, acest semnal critic a fost rutat corect.
+    
+    \item \textbf{Corecția mapării pinilor SPI:} Testbench-ul și scheletul original utilizează o convenție de numire a porturilor care poate crea confuzie (denumirile sunt relative la Master, nu la Slave). 
+    \begin{itemize}
+        \item Portul de intrare al top-ului numit \texttt{miso} transportă datele de la Master la Slave. Acesta trebuie conectat la intrarea \texttt{mosi} a bridge-ului intern.
+        \item Portul de ieșire al top-ului numit \texttt{mosi} transportă datele de la Slave la Master. Acesta trebuie conectat la ieșirea \texttt{miso} a bridge-ului intern.
+    \end{itemize}
+    Codul rescris implementează această încrucișare necesară:
+    \[ \text{.mosi(miso), .miso(mosi)} \]
+    
+    \item \textbf{Curățarea declarațiilor redundante:} Au fost eliminate redeclarările inutile de tip \texttt{wire} pentru porturile de intrare, adoptând un stil de codare modern (Verilog-2001/SystemVerilog) care reduce verbozitatea și riscul de erori.
+\end{itemize}
+
+\subsection{Arhitectura interconexiunilor}
+
+Structura internă a modulului \texttt{top} definește fluxul de date al sistemului:
+\begin{enumerate}
+    \item Semnalele SPI intră în \texttt{spi\_bridge}, care extrage octeții de date (\texttt{data\_in}) și generează pulsul de sincronizare.
+    \item Acestea sunt preluate de \texttt{instr\_dcd}, care separă comenzile de date și generează semnalele de control pentru magistrală (\texttt{read}, \texttt{write}, \texttt{addr}).
+    \item Modulul \texttt{regs} primește comenzile și configurează parametrii sistemului (\texttt{period}, \texttt{compare}, \texttt{prescale}).
+    \item Parametrii sunt trimiși către \texttt{counter} (pentru a stabili baza de timp) și către \texttt{pwm\_gen}.
+    \item În final, \texttt{pwm\_gen} compară valoarea contorului cu registrele de configurare și livrează semnalul \texttt{pwm\_out} către ieșirea fizică a cipului.
+\end{enumerate}
+
 
 \section{Concluzii}
 
-Implementarea respectă toate cerințele funcționale ale perifericului. Structura modulară, sincronizarea corectă a semnalelor externe și separarea clară a funcțiilor între module conduc la un periferic robust și ușor de integrat în sisteme mai complexe.
+Proiectul a rezultat într-o implementare robustă și complet funcțională a unui periferic PWM, capabil să opereze într-un mediu real de tip SoC, unde interfațarea între domenii de ceas asincrone reprezintă o provocare majoră. Soluția finală nu doar că respectă specificațiile funcționale, dar demonstrează o arhitectură rezilientă la erori de timing și hazarde logice.
+
+Succesul implementării se bazează pe trei piloni arhitecturali:
+\begin{enumerate}
+    \item \textbf{Robustețea comunicării SPI:} Implementarea mecanismului \textit{Toggle Flag + Buffer} în \texttt{spi\_bridge} a eliminat riscurile de corupere a datelor la viteze mari, garantând un canal de comunicație stabil.
+    \item \textbf{Precizia generării semnalului:} Utilizarea logicii combinaționale în \texttt{pwm\_gen} a asigurat latență zero și o formă de undă curată, perfect sincronizată cu contorul.
+    \item \textbf{Integritatea sistemului:} Corectarea interconexiunilor în \texttt{top.v} a transformat modulele individuale într-un sistem coerent.
+\end{enumerate}
+
+\subsection{Integrarea și Corecția Nivelului Superior}
+
+Un pas decisiv în finalizarea proiectului a fost refactorizarea modulului \texttt{top}. Deși inițial acesta era privit doar ca un element structural pasiv, analiza detaliată a scos la iveală necesitatea unor intervenții critice asupra sa.
+
+Versiunea finală a modulului \texttt{top} asigură funcționarea sistemului prin:
+\begin{itemize}
+    \item \textbf{Rutarea corectă a semnalului \texttt{byte\_sync}:} Conectarea acestui semnal vital între \texttt{spi\_bridge} și \texttt{instr\_dcd} a permis deblocarea mașinii de stări a decodorului.
+    \item \textbf{Remedierea convenției SPI:} Inversarea conexiunilor \texttt{miso}/\texttt{mosi} conform standardului Master-Slave a permis testbench-ului să comunice bidirecțional cu perifericul.
+    \item \textbf{Instanțierea explicită:} Legarea modulelor s-a făcut prin nume (\textit{named mapping}), eliminând riscurile asociate mapării poziționale.
+\end{itemize}
+
+\subsection{Validarea Funcțională}
+
+Verificarea sistemului a fost realizată utilizând suita de teste automatizate (\texttt{testbench.v}) rulată în simulatorul \textit{Icarus Verilog}. Procesul de validare a confirmat comportamentul corect în toate scenariile de utilizare prevăzute:
+
+\begin{itemize}
+    \item \textbf{Protocol SPI:} S-au verificat scrierile și citirile multiple la adrese diferite, confirmând că niciun pachet nu este pierdut, chiar și în cazul tranzacțiilor succesive rapide.
+    \item \textbf{Moduri PWM:}
+    \begin{itemize}
+        \item \textit{Left Aligned:} Semnalul respectă factorul de umplere raportat la începutul perioadei.
+        \item \textit{Right Aligned:} Semnalul este activ la finalul perioadei.
+        \item \textit{Range Mode:} Semnalul este activ strict între pragurile \texttt{COMPARE1} și \texttt{COMPARE2}.
+    \end{itemize}
+    \item \textbf{Cazuri la limită:} Testele au confirmat gestionarea corectă a situațiilor de \textit{overflow}, a pragurilor egale și a resetării în timpul funcționării.
+\end{itemize}
+
+Rezultatul final al simulării, marcat prin \texttt{[PASS]} la toate testele, certifică faptul că perifericul este pregătit pentru sinteză și integrare hardware.
+
+\subsection{Direcții viitoare}
+
+Deși implementarea curentă este completă, arhitectura modulară permite extinderi facile, cum ar fi:
+\begin{itemize}
+    \item Adăugarea suportului pentru întreruperi hardware la finalul perioadei (IRQ).
+    \item Implementarea modului \textit{Phase Correct PWM} (numărare UP-DOWN).
+    \item Adăugarea mai multor canale PWM care să împartă același contor (Timer).
+\end{itemize}
+
+În ansamblu, proiectul demonstrează o înțelegere profundă a designului digital, trecând de la specificații teoretice la o implementare verificată, optimizată și funcțională.
 
 \end{document}

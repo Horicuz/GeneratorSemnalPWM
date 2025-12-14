@@ -1,56 +1,66 @@
 module counter (
     // peripheral clock signals
-    input clk,
-    input rst_n,
+    input  wire        clk,
+    input  wire        rst_n,
     // register facing signals
-    output[15:0] count_val,
-    input[15:0] period,
-    input en,
-    input count_reset,
-    input upnotdown,
-    input[7:0] prescale
+    output wire [15:0] count_val,
+    input  wire [15:0] period,
+    input  wire        en,
+    input  wire        count_reset,
+    input  wire        upnotdown,
+    input  wire [7:0]  prescale
 );
-    // contorul principal
-    reg[15:0] r_count;
-    assign count_val = r_count;
 
-    // prescalerul intern
-    reg[15:0] r_psc;
+    // ---------------------------
+    // Registre interne
+    // ---------------------------
+    reg [15:0] count_val_r;
+    reg [7:0]  prescale_cnt;
 
-    // numarul de cicluri necesar pentru incrementare
-    wire[15:0] psc_limit = (16'd1 << prescale);
+    // Conectăm registrul intern la ieșire
+    assign count_val = count_val_r;
 
+    // ---------------------------
+    // Logică principală
+    // ---------------------------
     always @(posedge clk or negedge rst_n) begin
-        if(!rst_n) begin
-            r_count <= 16'd0;
-            r_psc <= 16'd0;
-        end else if(count_reset) begin
-            r_count <= 16'd0;
-            r_psc <= 16'd0;
+        if (!rst_n) begin
+            // Reset asincron (Hardware Reset)
+            count_val_r  <= 16'd0;
+            prescale_cnt <= 8'd0;
         end else begin
-            if(!en) begin // contor disabled
-                r_psc <= 16'd0; // mentinem prescalerul sincron
-            end else begin // contor enabled
-                r_psc <= r_psc + 16'd1;
+            if (count_reset) begin
+                // Reset sincron (din Software/Registru)
+                count_val_r  <= 16'd0;
+                prescale_cnt <= 8'd0;
+            end else if (en) begin
+                // Logica de Prescaler (Liniar: Divide cu prescale + 1)
+                if (prescale_cnt == prescale) begin
+                    // Prescaler a atins limita, executăm un "tick" de numărare
+                    prescale_cnt <= 8'd0;
 
-                // daca prescalerul a ajuns la limita, actualizam contorul
-                if(r_psc == psc_limit - 1) begin
-                    r_psc <= 16'd0;
-
-                    if(upnotdown) begin
-                        if (r_count == period)
-                            r_count <= 16'd0; // overflow, deci reia de la 0
+                    if (upnotdown) begin
+                        // UP MODE: 0 -> period
+                        if (count_val_r == period)
+                            count_val_r <= 16'd0;
                         else
-                            r_count <= r_count + 16'd1;
-                    end
-                    else begin
-                        if (r_count == 0)
-                            r_count <= period; // underflow deci, sarim la PERIOD
+                            count_val_r <= count_val_r + 1'b1;
+                    end else begin
+                        // DOWN MODE: period -> 0
+                        if (count_val_r == 0)
+                            count_val_r <= period;
                         else
-                            r_count <= r_count - 16'd1;
+                            count_val_r <= count_val_r - 1'b1;
                     end
+                end else begin
+                    // Încă nu a trecut timpul, incrementăm prescalerul
+                    prescale_cnt <= prescale_cnt + 1'b1;
                 end
             end
+            // else (!en):
+            // Contorul 'îngheață' (păstrează valoarea curentă).
+            // Dacă dorești comportamentul prietenului (reset la disable), 
+            // poți adăuga aici un `else prescale_cnt <= 0;` dar nu e obligatoriu.
         end
     end
 

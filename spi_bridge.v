@@ -1,102 +1,118 @@
 module spi_bridge (
     // peripheral clock signals
-    input clk,
-    input rst_n,
+    input  wire       clk,
+    input  wire       rst_n,
     // SPI master facing signals
-    input sclk,
-    input cs_n,
-    input mosi,
-    output miso,
+    input  wire       sclk,
+    input  wire       cs_n,
+    input  wire       mosi,
+    output wire       miso,
     // internal facing
-    output byte_sync,
-    output[7:0] data_in,
-    input[7:0] data_out
+    output wire       byte_sync,
+    output wire [7:0] data_in,
+    input  wire [7:0] data_out
 );
-    // Registri de iesire
-    reg r_miso;
-    reg r_byte_sync;
-    reg [7:0] r_data_in;
 
-    assign miso = r_miso;
-    assign byte_sync = r_byte_sync;
-    assign data_in = r_data_in;
-
-    // Logica SPI - functioneaza pe sclk
+    // ------------------------------------------------------------------------
+    // DOMENIUL SPI (SCLK)
+    // ------------------------------------------------------------------------
     reg [2:0] bit_cnt;
     reg [7:0] shift_reg;
     
-    // Counter pentru byte-uri complete (incrementat pe sclk domain)
-    reg [7:0] byte_counter;
-    reg [7:0] byte_counter_sync1;
-    reg [7:0] byte_counter_sync2;
-    reg [7:0] byte_counter_prev;
+    // In loc de un counter mare, folosim un singur bit care se inverseaza.
+    // Este matematic echivalent cu bitul 0 al counter-ului tau.
+    reg       toggle_flag; 
     
-    // Date capturate
+    // Buffer pentru a tine datele stabile pana le citeste CLK (Secretul succesului tau)
     reg [7:0] captured_data;
+    
+    reg r_miso;
 
-    // Logica pe rising edge sclk - captura date de pe mosi
+    // Logica de captura si Toggle
     always @(posedge sclk or negedge rst_n) begin
         if (!rst_n) begin
-            bit_cnt <= 0;
-            shift_reg <= 0;
-            byte_counter <= 0;
-            captured_data <= 0;
+            bit_cnt       <= 3'd0;
+            shift_reg     <= 8'd0;
+            toggle_flag   <= 1'b0;
+            captured_data <= 8'd0;
         end else if (cs_n) begin
-            bit_cnt <= 0;
+            // Resetam doar indexul bitilor cand CS e inactiv
+            bit_cnt <= 3'd0;
         end else begin
-            // Shift in MOSI bit
+            // Shiftam datele
             shift_reg <= {shift_reg[6:0], mosi};
             
-            if (bit_cnt == 7) begin
-                bit_cnt <= 0;
+            if (bit_cnt == 3'd7) begin
+                bit_cnt <= 3'd0;
+                // 1. Salvam datele intr-un buffer stabil
                 captured_data <= {shift_reg[6:0], mosi};
-                byte_counter <= byte_counter + 1;
+                // 2. Semnalizam "GATA" inversand bitul (Toggle)
+                // Asta e mult mai sigur hardware decat "byte_counter + 1"
+                toggle_flag <= ~toggle_flag;
             end else begin
-                bit_cnt <= bit_cnt + 1;
+                bit_cnt <= bit_cnt + 3'd1;
             end
         end
     end
     
-    // Logica pe falling edge sclk - setare MISO
+    // Logica MISO (Exact ca in varianta ta)
     always @(negedge sclk or negedge rst_n) begin
         if (!rst_n) begin
-            r_miso <= 0;
+            r_miso <= 1'b0;
         end else if (!cs_n) begin
-            // Output next bit (MSB first)
             r_miso <= data_out[7 - bit_cnt];
         end
     end
     
-    // Prima setare MISO cand CS devine activ
+    // Setup initial MISO (Exact ca in varianta ta)
     always @(negedge cs_n or negedge rst_n) begin
         if (!rst_n) begin
-            // handled above
+             // nimic
         end else begin
             r_miso <= data_out[7];
         end
     end
 
-    // Sincronizare byte_counter catre domeniul clk
+    // ------------------------------------------------------------------------
+    // DOMENIUL SISTEM (CLK)
+    // ------------------------------------------------------------------------
+    reg       toggle_sync1;
+    reg       toggle_sync2;
+    reg       toggle_prev;
+    
+    reg       r_byte_sync;
+    reg [7:0] r_data_in;
+
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            byte_counter_sync1 <= 0;
-            byte_counter_sync2 <= 0;
-            byte_counter_prev <= 0;
-            r_byte_sync <= 0;
-            r_data_in <= 0;
+            toggle_sync1 <= 1'b0;
+            toggle_sync2 <= 1'b0;
+            toggle_prev  <= 1'b0;
+            r_byte_sync  <= 1'b0;
+            r_data_in    <= 8'd0;
         end else begin
-            // Double-sync byte_counter
-            byte_counter_sync1 <= byte_counter;
-            byte_counter_sync2 <= byte_counter_sync1;
-            byte_counter_prev <= byte_counter_sync2;
+            // 1. Sincronizam doar 1 bit (Toggle Flag) - Sigur Hardware
+            toggle_sync1 <= toggle_flag;
+            toggle_sync2 <= toggle_sync1;
             
-            // Detecteaza cand s-a completat un byte nou
-            r_byte_sync <= 0;
-            if (byte_counter_sync2 != byte_counter_prev) begin
-                r_byte_sync <= 1;
-                r_data_in <= captured_data;
+            // 2. Memoram starea anterioara
+            toggle_prev  <= toggle_sync2;
+            
+            // 3. Detectam orice schimbare (0->1 sau 1->0)
+            // Asta e echivalent cu detectarea incrementarii counter-ului tau
+            r_byte_sync <= 1'b0;
+            
+            if (toggle_sync2 != toggle_prev) begin
+                r_byte_sync <= 1'b1;
+                // Citim din bufferul stabilizat
+                r_data_in   <= captured_data;
             end
         end
     end
+
+    // Iesiri
+    assign miso      = r_miso;
+    assign byte_sync = r_byte_sync;
+    assign data_in   = r_data_in;
 
 endmodule
