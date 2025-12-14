@@ -1,16 +1,16 @@
 module spi_bridge (
     // peripheral clock signals
-    input  wire       clk,
-    input  wire       rst_n,
+    input         clk,
+    input         rst_n,
     // SPI master facing signals
-    input  wire       sclk,
-    input  wire       cs_n,
-    input  wire       mosi,
-    output wire       miso,
+    input         sclk,
+    input         cs_n,
+    input         mosi,
+    output        miso,
     // internal facing
-    output wire       byte_sync,
-    output wire [7:0] data_in,
-    input  wire [7:0] data_out
+    output        byte_sync,
+    output  [7:0] data_in,
+    input   [7:0] data_out
 );
 
     // ------------------------------------------------------------------------

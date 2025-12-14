@@ -1,17 +1,17 @@
 module instr_dcd (
     // peripheral clock signals
-    input  wire       clk,
-    input  wire       rst_n,
+    input         clk,
+    input         rst_n,
     // towards SPI slave interface signals
-    input  wire       byte_sync,    // Puls primit de la SPI cand un byte e gata
-    input  wire [7:0] data_in,      // Byte-ul primit
-    output wire [7:0] data_out,     // Byte-ul de trimis inapoi (MISO)
+    input         byte_sync,    // Puls primit de la SPI cand un byte e gata
+    input   [7:0] data_in,      // Byte-ul primit
+    output  [7:0] data_out,     // Byte-ul de trimis inapoi (MISO)
     // register access signals
-    output wire       read,         // Semnal activ 1 ciclu pentru citire
-    output wire       write,        // Semnal activ 1 ciclu pentru scriere
-    output wire [5:0] addr,         // Adresa registrului tinta
-    input  wire [7:0] data_read,    // Datele primite de la registre
-    output wire [7:0] data_write    // Datele de scris in registre
+    output        read,         // Semnal activ 1 ciclu pentru citire
+    output        write,        // Semnal activ 1 ciclu pentru scriere
+    output  [5:0] addr,         // Adresa registrului tinta
+    input   [7:0] data_read,    // Datele primite de la registre
+    output  [7:0] data_write    // Datele de scris in registre
 );
 
     // ------------------------------------------------------------------------

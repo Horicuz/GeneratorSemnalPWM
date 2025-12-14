@@ -1,14 +1,14 @@
 module counter (
     // peripheral clock signals
-    input  wire        clk,
-    input  wire        rst_n,
+    input          clk,
+    input          rst_n,
     // register facing signals
-    output wire [15:0] count_val,
-    input  wire [15:0] period,
-    input  wire        en,
-    input  wire        count_reset,
-    input  wire        upnotdown,
-    input  wire [7:0]  prescale
+    output  [15:0] count_val,
+    input   [15:0] period,
+    input          en,
+    input          count_reset,
+    input          upnotdown,
+    input   [7:0]  prescale
 );
 
     // ---------------------------

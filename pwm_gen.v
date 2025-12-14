@@ -1,13 +1,13 @@
 module pwm_gen (
-    input  wire        clk,
-    input  wire        rst_n,
-    input  wire        pwm_en,
-    input  wire [15:0] period,
-    input  wire [7:0]  functions, // [1]=AlignMode, [0]=AlignRight
-    input  wire [15:0] compare1,
-    input  wire [15:0] compare2,
-    input  wire [15:0] count_val,
-    output wire        pwm_out
+    input          clk,
+    input          rst_n,
+    input          pwm_en,
+    input   [15:0] period,
+    input   [7:0]  functions, // [1]=AlignMode, [0]=AlignRight
+    input   [15:0] compare1,
+    input   [15:0] compare2,
+    input   [15:0] count_val,
+    output         pwm_out
 );
 
     // Revenim la logica combinationala pentru a avea ZERO latenta

@@ -1,25 +1,25 @@
 module regs (
     // peripheral clock signals
-    input  wire        clk,
-    input  wire        rst_n,
+    input          clk,
+    input          rst_n,
     // decoder facing signals
-    input  wire        read,
-    input  wire        write,
-    input  wire [5:0]  addr,
+    input          read,
+    input          write,
+    input   [5:0]  addr,
     output reg  [7:0]  data_read, // Logică combinațională
-    input  wire [7:0]  data_write,
+    input   [7:0]  data_write,
     // counter programming signals
-    input  wire [15:0] counter_val,
-    output wire [15:0] period,
-    output wire        en,
-    output wire        count_reset,
-    output wire        upnotdown,
-    output wire [7:0]  prescale,
+    input   [15:0] counter_val,
+    output  [15:0] period,
+    output         en,
+    output         count_reset,
+    output         upnotdown,
+    output  [7:0]  prescale,
     // PWM signal programming values
-    output wire        pwm_en,
-    output wire [7:0]  functions,
-    output wire [15:0] compare1,
-    output wire [15:0] compare2
+    output         pwm_en,
+    output  [7:0]  functions,
+    output  [15:0] compare1,
+    output  [15:0] compare2
 );
 
     // ------------------------------------------------------------------------

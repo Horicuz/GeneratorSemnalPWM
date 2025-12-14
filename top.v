@@ -5,15 +5,15 @@
 
 module top(
     // peripheral clock signals
-    input  wire clk,
-    input  wire rst_n,
+    input   clk,
+    input   rst_n,
     // SPI master facing signals
-    input  wire sclk,
-    input  wire cs_n,
-    input  wire miso,   // TB -> DUT (Functioneaza ca MOSI)
-    output wire mosi,   // DUT -> TB (Functioneaza ca MISO)
+    input   sclk,
+    input   cs_n,
+    input   miso,   // TB -> DUT (Functioneaza ca MOSI)
+    output  mosi,   // DUT -> TB (Functioneaza ca MISO)
     // peripheral signals
-    output wire pwm_out
+    output  pwm_out
 );
 
     // ------------------------------------------------------------------------
