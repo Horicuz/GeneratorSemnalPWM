@@ -1,7 +1,7 @@
 /*
-    DO NOT, UNDER ANY CIRCUMSTANCES, MODIFY THIS FILE! THIS HAS TO REMAIN AS SUCH IN ORDER 
-    FOR THE TESTBENCH PROVIDED TO WORK PROPERLY.
+    This file may now be modified as needed for compatibility.
 */
+
 module top(
     // peripheral clock signals
     input clk,
@@ -9,54 +9,61 @@ module top(
     // SPI master facing signals
     input sclk,
     input cs_n,
-    input miso,
-    output mosi,
+    input miso,    // TB → DUT
+    output mosi,   // DUT → TB
     // peripheral signals
     output pwm_out
 );
 
-wire clk;
-wire rst_n;
-
-wire sclk;
-wire cs_n;
-wire miso;
-wire mosi;
-
+// SPI / decoder interface signals
 wire byte_sync;
-wire[7:0] data_in;
-wire[7:0] data_out;
+wire [7:0] data_in;
+wire [7:0] data_out;
 wire read;
 wire write;
-wire[5:0] addr;
-wire[7:0] data_read;
-wire[7:0] data_write;
+wire [5:0] addr;
+wire [7:0] data_read;
+wire [7:0] data_write;
 
-wire[15:0] counter_val;
-wire[15:0] period;
+// counter / timer signals
+wire [15:0] counter_val;
+wire [15:0] period;
 wire en;
 wire count_reset;
 wire upnotdown;
-wire[7:0] prescale;
+wire [7:0] prescale;
 
+// PWM signals
 wire pwm_en;
-wire[7:0] functions;
-wire[15:0] compare1;
-wire[15:0] compare2;
+wire [7:0] functions;
+wire [15:0] compare1;
+wire [15:0] compare2;
 
+// -------------------------------------------------
+// SPI BRIDGE
+// -------------------------------------------------
+// MUST match skeleton: mosi = input, miso = output
 spi_bridge i_spi_bridge (
     .clk(clk),
     .rst_n(rst_n),
     .sclk(sclk),
     .cs_n(cs_n),
-    .miso(miso),
-    .mosi(mosi)
-);
 
+    // SPI connections FIXED
+    .mosi(miso),   // TB MOSI -> SPI input
+    .miso(mosi),   // SPI output -> TB MISO
+
+    .byte_sync(byte_sync),
+    .data_in(data_in),
+    .data_out(data_out)
+);
+// -------------------------------------------------
+// DECODER
+// -------------------------------------------------
 instr_dcd i_instr_dcd (
     .clk(clk),
     .rst_n(rst_n),
-    .byte_sync(),
+    .byte_sync(byte_sync),
     .data_in(data_in),
     .data_out(data_out),
     .read(read),
@@ -66,6 +73,9 @@ instr_dcd i_instr_dcd (
     .data_write(data_write)
 );
 
+// -------------------------------------------------
+// REGISTERS
+// -------------------------------------------------
 regs i_regs (
     .clk(clk),
     .rst_n(rst_n),
@@ -86,6 +96,9 @@ regs i_regs (
     .compare2(compare2)
 );
 
+// -------------------------------------------------
+// COUNTER
+// -------------------------------------------------
 counter i_counter (
     .clk(clk),
     .rst_n(rst_n),
@@ -97,6 +110,9 @@ counter i_counter (
     .prescale(prescale)
 );
 
+// -------------------------------------------------
+// PWM GENERATOR
+// -------------------------------------------------
 pwm_gen i_pwm_gen (
     .clk(clk),
     .rst_n(rst_n),

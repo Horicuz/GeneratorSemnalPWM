@@ -1,436 +1,231 @@
-`timescale 1ns/1ps
+`default_nettype none
+`timescale 1ns/1ns
 
-module tb_top;
-    // Semnale SPI (master)
-    reg sclk;
-    reg cs_n;
-    reg miso;  // Din cauza conventiei inversate in top.v (input miso)
-    wire mosi; // Din cauza conventiei inversate in top.v (output mosi)
+module tb_top_system;
 
-    // Semnale sistem
-    reg clk;
-    reg rst_n;
+    reg  clk;         
+    reg  rst_n;
 
-    // Ieșire PWM
+    reg  tb_mosi;   
+    wire tb_miso;    
+    reg  sclk;      
+    reg  cs_n;       
+
     wire pwm_out;
 
-    // Instanțiere DUT
-    top uut (
-        .clk(clk),
-        .rst_n(rst_n),
-        .sclk(sclk),
-        .cs_n(cs_n),
-        .miso(miso),  // TB citește miso (wire) <- DUT output
-        .mosi(mosi),  // TB scrie mosi (reg) -> DUT input
+    reg[7:0] counter_lsb;
+
+    top dut (
+        .clk    (clk),
+        .rst_n  (rst_n),
+        .sclk   (sclk),
+        .cs_n   (cs_n),
+        .miso   (tb_mosi),
+        .mosi   (tb_miso),
         .pwm_out(pwm_out)
     );
 
-    // Generare ceas sistem (10MHz = 100ns perioadă)
-    initial clk = 0;
-    always #50 clk = ~clk;
+    localparam CLK_HALF   = 50;  
+    localparam SCLK_HALF  = 50;   
 
-    // ========================================================
-    // TASK-URI PENTRU COMUNICAȚIE SPI
-    // ========================================================
+    localparam [5:0] REG_PERIOD        = 6'h00;
+    localparam [5:0] REG_COUNTER_EN    = 6'h02;
+    localparam [5:0] REG_COMPARE1      = 6'h03;
+    localparam [5:0] REG_COMPARE2      = 6'h05;
+    localparam [5:0] REG_COUNTER_RESET = 6'h07;
+    localparam [5:0] REG_COUNTER_VAL   = 6'h08;
+    localparam [5:0] REG_PRESCALE      = 6'h0A;
+    localparam [5:0] REG_UPNOTDOWN     = 6'h0B;
+    localparam [5:0] REG_PWM_EN        = 6'h0C;
+    localparam [5:0] REG_FUNCTIONS     = 6'h0D;
 
-    // Trimite 1 byte pe SPI (MSB first) - Scrierea către slave
-    task spi_send_byte(input [7:0] data);
-        integer i;
-        begin
-            for (i = 7; i >= 0; i = i - 1) begin
-                miso = data[i];  // TB scrie pe miso (care merge la top.miso INPUT)
-                #1000;
-                
-                sclk = 1;
-                #500;
-                #500;
-                
-                sclk = 0;
-                #1000;
-            end
-        end
-    endtask
-
-    // Citește 1 byte de pe SPI (MSB first) - Citirea de la slave
-    task spi_read_byte(output [7:0] data);
-        integer i;
-        begin
-            for (i = 7; i >= 0; i = i - 1) begin
-                miso = 0;  // TB nu trimite date când citește
-                #1000;
-                
-                sclk = 1;
-                #500;
-                data[i] = mosi;  // TB citește de pe mosi (care vine de la top.mosi OUTPUT)
-                #500;
-                
-                sclk = 0;
-                #1000;
-            end
-        end
-    endtask
-
-    // Scriere în registru (operație completă)
-    task spi_write_reg(
-        input [5:0] addr,
-        input high_low,      // 0=[7:0], 1=[15:8]
-        input [7:0] data
-    );
-        begin
-            // Activează slave
-            cs_n = 0;
-            #1000;
-
-            // Byte 1: Comandă (Write=1, H/L, Address)
-            spi_send_byte({1'b1, high_low, addr});
-
-            // Byte 2: Data
-            spi_send_byte(data);
-
-            // Dezactivează slave
-            sclk = 0;
-            #1000;
-            cs_n = 1;
-            #2000;  // Delay între tranzacții
-        end
-    endtask
-
-    // Scriere registru 16-bit
-    task spi_write_reg16(input [5:0] addr, input [15:0] data);
-        begin
-            spi_write_reg(addr, 1'b0, data[7:0]);   // Low byte
-            spi_write_reg(addr, 1'b1, data[15:8]);  // High byte
-        end
-    endtask
-
-    // Scriere registru 1-bit sau 8-bit
-    task spi_write_reg8(input [5:0] addr, input [7:0] data);
-        begin
-            spi_write_reg(addr, 1'b0, data);
-        end
-    endtask
-
-    // Citire din registru
-    task spi_read_reg(
-        input [5:0] addr,
-        input high_low,
-        output [7:0] data
-    );
-        begin
-            cs_n = 0;
-            #1000;
-
-            // Byte 1: Comandă (Read=0, H/L, Address)
-            spi_send_byte({1'b0, high_low, addr});
-
-            // Byte 2: Citește data
-            spi_read_byte(data);
-
-            sclk = 0;
-            #1000;
-            cs_n = 1;
-            #2000;
-        end
-    endtask
-
-    // Citire registru 16-bit
-    task spi_read_reg16(input [5:0] addr, output [15:0] data);
-        reg [7:0] low, high;
-        begin
-            spi_read_reg(addr, 1'b0, low);
-            spi_read_reg(addr, 1'b1, high);
-            data = {high, low};
-        end
-    endtask
-
-    // Așteaptă N cicluri de ceas sistem
-    task wait_clk(input integer n);
-        repeat(n) @(posedge clk);
-    endtask
-
-    // Verificare cu mesaj
-    task check(input [255:0] msg, input condition);
-        begin
-            if (condition)
-                $display("  ✓ %0s", msg);
-            else begin
-                $display("  ✗ %0s", msg);
-                $display("    Time: %0t", $time);
-                $stop;
-            end
-        end
-    endtask
-
-    // ========================================================
-    // SECVENȚĂ DE TEST
-    // ========================================================
-
-    reg [15:0] read_data;
+    localparam [1:0] FUNCTION_ALIGN_LEFT             = 2'b00;
+    localparam [1:0] FUNCTION_ALIGN_RIGHT            = 2'b01;
+    localparam [1:0] FUNCTION_RANGE_BETWEEN_COMPARES = 2'b10;
 
     initial begin
-        // Inițializare
-        clk = 0;
-        rst_n = 0;
-        sclk = 0;
-        cs_n = 1;
-        miso = 0;
-
-        // Reset
-        #300;
-        rst_n = 1;
-        #200;
-
-        $display("\n");
-        $display("========================================");
-        $display("  TEST PERIFERIC PWM - COMPLET");
-        $display("========================================\n");
-
-        // ====================================
-        // TEST 1: Configurare inițială
-        // ====================================
-        $display("TEST 1: Scriere și citire registri");
-        $display("------------------------------------");
-
-        spi_write_reg16(6'h00, 16'd100);  // PERIOD = 100
-        spi_read_reg16(6'h00, read_data);
-        check("PERIOD scris și citit corect", read_data == 16'd100);
-
-        spi_write_reg16(6'h03, 16'd30);   // COMPARE1 = 30
-        spi_read_reg16(6'h03, read_data);
-        check("COMPARE1 scris corect", read_data == 16'd30);
-
-        spi_write_reg8(6'h0A, 8'd0);      // PRESCALE = 0 (no scaling)
-        spi_write_reg8(6'h0B, 8'd1);      // UPNOTDOWN = 1 (up)
-
-        $display("");
-
-        // ====================================
-        // TEST 2: PWM Left Aligned
-        // ====================================
-        $display("TEST 2: PWM Left Aligned");
-        $display("------------------------------------");
-
-        spi_write_reg16(6'h00, 16'd20);   // PERIOD = 20
-        spi_write_reg16(6'h03, 16'd10);   // COMPARE1 = 10 (50% duty)
-        spi_write_reg8(6'h0D, 8'b00);     // FUNCTIONS = 00 (left aligned)
-        spi_write_reg8(6'h0A, 8'd0);      // PRESCALE = 0
-        spi_write_reg8(6'h0B, 8'd1);      // UP counting
-
-        // Reset counter
-        spi_write_reg8(6'h07, 8'd1);      // COUNTER_RESET
-        wait_clk(5);
-
-        // Activează counter și PWM
-        spi_write_reg8(6'h02, 8'd1);      // COUNTER_EN = 1
-        spi_write_reg8(6'h0C, 8'd1);      // PWM_EN = 1
-
-        wait_clk(5);
-        check("PWM = 1 la start (left aligned)", pwm_out == 1'b1);
-
-        // Așteaptă să ajungă la COMPARE1 (count_val = 10)
-        repeat(12) @(posedge clk);
-        check("PWM = 0 după COMPARE1", pwm_out == 1'b0);
-
-        // Așteaptă overflow (counter revine la 0)
-        repeat(12) @(posedge clk);  // 10 + 12 = 22, deci am trecut de 20 (overflow)
-        check("PWM = 1 după overflow", pwm_out == 1'b1);
-
-        $display("");
-
-        // ====================================
-        // TEST 3: PWM Right Aligned
-        // ====================================
-        $display("TEST 3: PWM Right Aligned");
-        $display("------------------------------------");
-
-        spi_write_reg8(6'h0C, 8'd0);      // PWM_EN = 0
-        spi_write_reg8(6'h02, 8'd0);      // COUNTER_EN = 0
-        wait_clk(3);
-
-        spi_write_reg8(6'h07, 8'd1);      // COUNTER_RESET
-        wait_clk(3);
-
-        spi_write_reg8(6'h0D, 8'b01);     // FUNCTIONS = 01 (right aligned)
-
-        spi_write_reg8(6'h02, 8'd1);      // COUNTER_EN = 1
-        spi_write_reg8(6'h0C, 8'd1);      // PWM_EN = 1
-
-        wait_clk(5);
-        check("PWM = 0 la start (right aligned)", pwm_out == 1'b0);
-
-        // Așteaptă să ajungă la COMPARE1 (count_val = 10)
-        repeat(12) @(posedge clk);
-        check("PWM = 1 după COMPARE1", pwm_out == 1'b1);
-
-        // Așteaptă overflow (counter revine la 0)
-        repeat(12) @(posedge clk);  // 10 + 12 = 22, deci am trecut de 20 (overflow)
-        check("PWM = 0 după overflow", pwm_out == 1'b0);
-
-        $display("");
-
-        // ====================================
-        // TEST 4: PWM Unaligned
-        // ====================================
-        $display("TEST 4: PWM Unaligned");
-        $display("------------------------------------");
-
-        spi_write_reg8(6'h0C, 8'd0);
-        spi_write_reg8(6'h02, 8'd0);
-        wait_clk(3);
-
-        spi_write_reg8(6'h07, 8'd1);
-        wait_clk(3);
-
-        spi_write_reg16(6'h03, 16'd5);    // COMPARE1 = 5
-        spi_write_reg16(6'h05, 16'd15);   // COMPARE2 = 15
-        spi_write_reg8(6'h0D, 8'b10);     // FUNCTIONS = 10 (unaligned)
-
-        spi_write_reg8(6'h02, 8'd1);
-        spi_write_reg8(6'h0C, 8'd1);
-
-        wait_clk(5);
-        check("PWM = 0 la start (unaligned)", pwm_out == 1'b0);
-
-        wait_clk(8);
-        check("PWM = 1 la COMPARE1", pwm_out == 1'b1);
-
-        wait_clk(12);
-        check("PWM = 0 la COMPARE2", pwm_out == 1'b0);
-
-        $display("");
-
-        // ====================================
-        // TEST 5: Prescaler
-        // ====================================
-        $display("TEST 5: Prescaler (PRESCALE=2, scalare cu 4)");
-        $display("------------------------------------");
-
-        spi_write_reg8(6'h0C, 8'd0);
-        spi_write_reg8(6'h02, 8'd0);
-        wait_clk(3);
-
-        spi_write_reg8(6'h07, 8'd1);
-        wait_clk(3);
-
-        spi_write_reg16(6'h00, 16'd10);
-        spi_write_reg16(6'h03, 16'd5);
-        spi_write_reg8(6'h0A, 8'd2);      // PRESCALE = 2 (div by 4)
-        spi_write_reg8(6'h0D, 8'b00);
-
-        spi_write_reg8(6'h02, 8'd1);
-        spi_write_reg8(6'h0C, 8'd1);
-
-        wait_clk(10);
-        $display("  Prescaler funcționează (PWM activ cu delay)");
-
-        $display("");
-
-        // ====================================
-        // TEST 6: Down Counting
-        // ====================================
-        $display("TEST 6: Down Counting");
-        $display("------------------------------------");
-
-        spi_write_reg8(6'h0C, 8'd0);
-        spi_write_reg8(6'h02, 8'd0);
-        wait_clk(3);
-
-        spi_write_reg8(6'h07, 8'd1);
-        wait_clk(3);
-
-        spi_write_reg8(6'h0B, 8'd0);      // UPNOTDOWN = 0 (down)
-        spi_write_reg8(6'h0A, 8'd0);      // PRESCALE = 0
-        spi_write_reg16(6'h00, 16'd20);
-        spi_write_reg16(6'h03, 16'd10);
-
-        spi_write_reg8(6'h02, 8'd1);
-        spi_write_reg8(6'h0C, 8'd1);
-
-        wait_clk(30);
-        $display("  Down counting funcționează");
-
-        $display("");
-
-        // ====================================
-        // TEST 7: Citire COUNTER_VAL
-        // ====================================
-        $display("TEST 7: Citire COUNTER_VAL");
-        $display("------------------------------------");
-
-        spi_read_reg16(6'h08, read_data);
-        $display("  COUNTER_VAL = %0d", read_data);
-        check("COUNTER_VAL citit cu succes", 1);
-
-        $display("");
-
-        // ====================================
-        // TEST 8: Duty cycle diferite
-        // ====================================
-        $display("TEST 8: Duty Cycles - 25%%, 50%%, 75%%");
-        $display("------------------------------------");
-
-        // 25% duty
-        spi_write_reg8(6'h0C, 8'd0);
-        spi_write_reg8(6'h02, 8'd0);
-        wait_clk(2);
-        spi_write_reg8(6'h07, 8'd1);
-        wait_clk(2);
-
-        spi_write_reg16(6'h00, 16'd40);
-        spi_write_reg16(6'h03, 16'd10);   // 25%
-        spi_write_reg8(6'h0D, 8'b00);
-        spi_write_reg8(6'h0B, 8'd1);
-        spi_write_reg8(6'h0A, 8'd0);
-
-        spi_write_reg8(6'h02, 8'd1);
-        spi_write_reg8(6'h0C, 8'd1);
-        wait_clk(50);
-        $display("  25%% duty cycle OK");
-
-        // 50% duty
-        spi_write_reg8(6'h0C, 8'd0);
-        spi_write_reg8(6'h02, 8'd0);
-        wait_clk(2);
-        spi_write_reg8(6'h07, 8'd1);
-        wait_clk(2);
-
-        spi_write_reg16(6'h03, 16'd20);   // 50%
-        spi_write_reg8(6'h02, 8'd1);
-        spi_write_reg8(6'h0C, 8'd1);
-        wait_clk(50);
-        $display("  50%% duty cycle OK");
-
-        // 75% duty
-        spi_write_reg8(6'h0C, 8'd0);
-        spi_write_reg8(6'h02, 8'd0);
-        wait_clk(2);
-        spi_write_reg8(6'h07, 8'd1);
-        wait_clk(2);
-
-        spi_write_reg16(6'h03, 16'd30);   // 75%
-        spi_write_reg8(6'h02, 8'd1);
-        spi_write_reg8(6'h0C, 8'd1);
-        wait_clk(50);
-        $display("  75%% duty cycle OK");
-
-        $display("");
-
-        // ====================================
-        // FINAL
-        // ====================================
-        $display("========================================");
-        $display("  ✓✓✓ TOATE TESTELE AU TRECUT ✓✓✓");
-        $display("========================================\n");
-
-        #1000;
-        $finish;
+        clk = 1'b0;
+        forever #(CLK_HALF) clk = ~clk;
     end
 
-    // Timeout
     initial begin
-        #200000000;  // 200ms timeout
-        $display("\n✗ TIMEOUT!");
+  $dumpfile("waves.vcd");
+  $dumpvars(0, tb_top_system);
+  
+  // -------------- DE URMĂRIT -----------------
+  // registrele interne și semnale cheie
+  $dumpvars(0, tb_top_system.dut.i_regs.r_period);
+  $dumpvars(0, tb_top_system.dut.i_regs.r_compare1);
+  $dumpvars(0, tb_top_system.dut.i_regs.r_en);
+  $dumpvars(0, tb_top_system.dut.i_regs.r_pwm_en);
+  $dumpvars(0, tb_top_system.dut.i_regs.r_functions);
+  $dumpvars(0, tb_top_system.dut.i_regs.r_prescale);
+  $dumpvars(0, tb_top_system.dut.i_counter.count_val_r);
+  $dumpvars(0, tb_top_system.dut.i_counter.prescale_cnt);
+  $dumpvars(0, tb_top_system.dut.i_pwm_gen.pwm_out_r);
+end
+
+    task apply_reset;
+        begin
+            rst_n  = 1'b0;
+            cs_n   = 1'b1;
+            sclk   = 1'b0;
+            tb_mosi = 1'b0;
+            #(10*CLK_HALF); 
+            rst_n  = 1'b1;
+            #(5*CLK_HALF);
+            $display("Time %0t: Reset deasserted.", $time);
+        end
+    endtask
+
+    task spi_transfer_byte;
+        input  [7:0] tx;
+        output [7:0] rx;
+        integer i;
+        begin
+            rx = 8'h00;
+            for (i = 7; i >= 0; i = i - 1) begin
+                tb_mosi = tx[i];
+                #(SCLK_HALF);
+                sclk = 1'b1;           
+                #(SCLK_HALF/2);
+                rx[i] = tb_miso;      
+                #(SCLK_HALF/2);
+                sclk = 1'b0;
+            end
+        end
+    endtask
+
+    task spi_write_reg;
+        input  [5:0] addr;
+        input  [7:0] data;
+        reg    [7:0] cmd;
+        reg    [7:0] dummy;
+        begin
+            cmd = {1'b1, 1'b1, addr};   
+            #(SCLK_HALF);
+            cs_n = 1'b0;
+
+            spi_transfer_byte(cmd, dummy);
+            spi_transfer_byte(data, dummy);
+
+            #(SCLK_HALF);
+            cs_n = 1'b1;
+
+            $display("Time %0t: SPI WRITE  addr=0x%02h  data=0x%02h", $time, addr, data);
+            #(4*CLK_HALF); 
+        end
+    endtask
+
+    task spi_read_reg;
+        input  [5:0] addr;
+        output [7:0] data;
+        reg    [7:0] cmd;
+        reg    [7:0] rx;
+        begin
+            cmd = {1'b0, 1'b1, addr};   
+            #(SCLK_HALF);
+            cs_n = 1'b0;
+
+            spi_transfer_byte(cmd, rx);           
+            spi_transfer_byte(8'h00, data);     
+
+            #(SCLK_HALF);
+            cs_n = 1'b1;
+
+            $display("Time %0t: SPI READ   addr=0x%02h  data=0x%02h", $time, addr, data);
+            #(4*CLK_HALF);
+        end
+    endtask
+
+    task check_pwm_duty;
+        input integer period_val;
+        input integer high_per_period;
+        input integer num_periods;
+        integer total_ticks;
+        integer high_count;
+        integer i;
+        integer exp;
+        begin
+            total_ticks = (period_val + 1) * num_periods;
+            exp         = high_per_period * num_periods;
+            high_count  = 0;
+
+            #(5*CLK_HALF);
+
+            for (i = 0; i < total_ticks; i = i + 1) begin
+                @(posedge clk);
+                if (pwm_out)
+                    high_count = high_count + 1;
+            end
+
+            if ((high_count >= exp-1) && (high_count <= exp+1)) begin
+                $display("[PASS] PWM duty aprox. corect: high=%0d, expected ~%0d", 
+                         high_count, exp);
+            end else begin
+                $display("[FAIL] PWM duty incorect: high=%0d, expected %0d", 
+                         high_count, exp);
+            end
+        end
+    endtask
+
+    initial begin
+        $display("--- Starting Testbench ---");
+
+        rst_n   = 1'b0;
+        cs_n    = 1'b1;
+        sclk    = 1'b0;
+        tb_mosi = 1'b0;
+
+        apply_reset();
+
+        spi_write_reg(REG_PERIOD,       8'd7);
+        spi_write_reg(REG_PRESCALE,     8'd0);
+        spi_write_reg(REG_COMPARE1,     8'd3);
+        spi_write_reg(REG_COUNTER_EN,   8'd1);
+        spi_write_reg(REG_PWM_EN,       8'd1);
+        spi_write_reg(REG_FUNCTIONS,    {6'b0, FUNCTION_ALIGN_LEFT});
+
+        spi_write_reg(REG_COUNTER_RESET, 8'd1);
+        spi_write_reg(REG_COUNTER_RESET, 8'd0);
+
+        $display("\n--- Test 1: PWM ALIGN_LEFT, compare1=3, period=7 ---");
+        check_pwm_duty(7, 4, 5); 
+
+
+        spi_read_reg(REG_COUNTER_VAL, counter_lsb);
+
+        $display("\n--- Test 2: PWM RANGE_BETWEEN_COMPARES, c1=2, c2=6 ---");
+        spi_write_reg(REG_COMPARE1, 8'd2);
+        spi_write_reg(REG_COMPARE2, 8'd6);
+        spi_write_reg(REG_FUNCTIONS, {6'b0, FUNCTION_RANGE_BETWEEN_COMPARES});
+
+        check_pwm_duty(7, 4, 5); 
+
+        $display("\n--- Test 3: PWM ALIGN_RIGHT, compare1=5 ---");
+        spi_write_reg(REG_COMPARE1, 8'd5);
+        spi_write_reg(REG_FUNCTIONS, {6'b0, FUNCTION_ALIGN_RIGHT});
+
+        check_pwm_duty(7, 3, 5); 
+
+        $display("\n--- Test 4: PWM UNALIGNED EDGE CASE EQUAL COMPARES ---");
+        spi_write_reg(REG_COUNTER_EN, 8'h00);
+        spi_write_reg(REG_COMPARE1, 8'h05);
+        spi_write_reg(REG_COMPARE2, 8'h05);
+        spi_write_reg(REG_COUNTER_EN, 8'h01);
+        check_pwm_duty(7, 0, 2);
+        
+        $display("\n--- Test 5: PWM NOT TRIGGER AT START, compare1=0 ---");
+        spi_write_reg(REG_COUNTER_EN, 8'h00);
+        spi_write_reg(REG_COMPARE1, 8'h00);
+        spi_write_reg(REG_FUNCTIONS, 8'h00);
+        spi_write_reg(REG_COUNTER_EN, 8'h01);
+        check_pwm_duty(7, 0, 3);
+
+        $display("\n--- Finished Testbench ---");
         $finish;
     end
 
 endmodule
+
+`default_nettype wire
