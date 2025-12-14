@@ -62,17 +62,27 @@ module regs (
 
             if (write) begin
                 case (addr)
+                    // PERIOD low byte
                     6'h00: r_period[7:0]    <= data_write;
+                    // PERIOD high byte
                     6'h01: r_period[15:8]   <= data_write;
+                    // COUNTER_EN (1 bit)
                     6'h02: r_en             <= data_write[0];
+                    // COMPARE1 low si high byte
                     6'h03: r_compare1[7:0]  <= data_write;
                     6'h04: r_compare1[15:8] <= data_write;
+                    // COMPARE2 low si high byte
                     6'h05: r_compare2[7:0]  <= data_write;
                     6'h06: r_compare2[15:8] <= data_write;
-                    6'h07: r_count_reset    <= 1'b1; // Write-Only (Pulse)
+                    // COUNTER_RESET - write-only, orice scriere produce un impuls
+                    6'h07: r_count_reset    <= 1'b1;
+                    // PRESCALE (8 biti)
                     6'h0A: r_prescale       <= data_write;
+                    // UPNOTDOWN (1 bit)
                     6'h0B: r_upnotdown      <= data_write[0];
+                    // PWM_EN (1 bit)
                     6'h0C: r_pwm_en         <= data_write[0];
+                    // FUNCTIONS
                     6'h0D: r_functions      <= data_write;
                 endcase
             end
